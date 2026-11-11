@@ -18,21 +18,39 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.schedule.app.data.ScreenshotTodoDraft
+import com.schedule.app.data.TodoAi
+import com.schedule.app.data.TodoAiKeyStore
 import com.schedule.app.model.Todo
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun ScreenshotTodoReviewDialog(
     draft: ScreenshotTodoDraft,
     onDismiss: () -> Unit,
+    onAiDraft: (ScreenshotTodoDraft) -> Unit,
     onSave: (Todo) -> Unit
 ) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val keyStore = remember(ctx) { TodoAiKeyStore(ctx) }
+    var configured by remember { mutableStateOf(keyStore.configured()) }
+    var showKey by remember { mutableStateOf(false) }
+    var keyInput by remember { mutableStateOf("") }
+    var showConsent by remember { mutableStateOf(false) }
+    var aiWorking by remember { mutableStateOf(false) }
+    var aiError by remember { mutableStateOf<String?>(null) }
     var title by remember(draft) { mutableStateOf(draft.title) }
     var dueDate by remember(draft) { mutableStateOf(draft.dueDate?.toString()) }
     var dueTime by remember(draft) { mutableStateOf(draft.dueTime.orEmpty()) }
@@ -50,7 +68,7 @@ fun ScreenshotTodoReviewDialog(
         title = { Text("检查识别结果") },
         text = {
             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                Text("识别在本机完成，图片没有上传。保存前请核对待办和日期。", style = MaterialTheme.typography.bodySmall)
+                Text("识别在本机完成；只有你确认使用 AI 时才会发送识别文字，图片不会发送。保存前请核对内容。", style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(title, { title = it }, label = { Text("待办内容") }, modifier = Modifier.fillMaxWidth())
                 if (draft.sourceDateText != null) {
                     Text(
@@ -91,6 +109,13 @@ fun ScreenshotTodoReviewDialog(
                 }
                 if (!timeValid) Text("时间格式应为 HH:mm。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Text("识别文字：${draft.recognizedText.take(500)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Row {
+                    TextButton(enabled = !aiWorking, onClick = { showKey = true }) { Text(if (configured) "管理 AI 密钥" else "设置 AI 密钥") }
+                    TextButton(enabled = !aiWorking, onClick = {
+                        if (!configured) showKey = true else showConsent = true
+                    }) { Text(if (aiWorking) "AI 整理中…" else "AI 整理文字") }
+                }
+                aiError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = {
@@ -108,4 +133,44 @@ fun ScreenshotTodoReviewDialog(
         noDueDate = false
         chooseDate = false
     }
+    if (showKey) AlertDialog(
+        onDismissRequest = { keyInput = ""; showKey = false },
+        title = { Text("DeepSeek API 密钥") },
+        text = { Column {
+            Text("密钥加密保存在本机、不写入备份。调用 DeepSeek 可能产生费用。", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(keyInput, { keyInput = it }, label = { Text("API Key") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+            if (configured) TextButton(onClick = {
+                runCatching { keyStore.clear() }.onSuccess { configured = false; keyInput = ""; showKey = false }
+                    .onFailure { aiError = "无法删除密钥，请重试。" }
+            }) { Text("删除已保存的密钥") }
+        } },
+        confirmButton = { TextButton(enabled = keyInput.isNotBlank(), onClick = {
+            runCatching { keyStore.save(keyInput) }.onSuccess { configured = true; keyInput = ""; showKey = false }
+                .onFailure { aiError = "无法保存密钥，请重试。" }
+        }) { Text("保存") } },
+        dismissButton = { TextButton(onClick = { keyInput = ""; showKey = false }) { Text("取消") } }
+    )
+    if (showConsent) AlertDialog(
+        onDismissRequest = { showConsent = false },
+        title = { Text("发送识别文字给 DeepSeek？") },
+        text = { Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState())) {
+            Text("下方全部识别文字将发送给 DeepSeek 处理，可能包含个人信息并产生 API 费用。图片不会发送。模型结果会替换当前草稿，请再次核对后保存。")
+            if (draft.recognizedText.length > 20_000) Text("识别文字超过 2 万字，暂不能发送。请裁剪图片后重试。", color = MaterialTheme.colorScheme.error)
+            Text(draft.recognizedText, style = MaterialTheme.typography.bodySmall)
+        } },
+        confirmButton = { TextButton(enabled = draft.recognizedText.length <= 20_000, onClick = {
+            showConsent = false
+            aiWorking = true
+            aiError = null
+            scope.launch {
+                try {
+                    val result = withContext(Dispatchers.IO) { TodoAi.organize(draft.recognizedText, keyStore.load(), draft) }
+                    onAiDraft(result)
+                } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                catch (_: Exception) { aiError = "AI 整理失败，请检查网络、密钥和账户状态。原草稿仍在。" }
+                finally { aiWorking = false }
+            }
+        }) { Text("同意并发送文字") } },
+        dismissButton = { TextButton(onClick = { showConsent = false }) { Text("取消") } }
+    )
 }

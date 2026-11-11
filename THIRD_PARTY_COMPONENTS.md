@@ -1,5 +1,7 @@
 # 第三方组件清单
 
+> 本地截图识别开发分支新增了 Google ML Kit 及其传递依赖，本清单尚未按新依赖重新生成，不应作为该分支的完整组件清单或分发依据。
+
 此清单来自离线构建实际解析的 Gradle 制品，包含发布版、调试版、单元测试与构建工具。许可证列转录 POM 或其父级声明；多项许可证的选择关系以原始文本为准。构建工具和单元测试依赖不因列在此处就被声称包含在 APK 中；构建工具的插件及其传递依赖也不随本源码候选一并分发。此表不是对每个组件所有源文件及 NOTICE 的完整法律审计。
 
 范围：R = releaseRuntimeClasspath；D = debugRuntimeClasspath；T = debugUnitTestRuntimeClasspath；B = 构建插件 classpath。版本或构建配置变化时应重新生成。

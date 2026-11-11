@@ -42,6 +42,8 @@
 
 首次启动使用空数据。课表、提醒及外观等保存在设备上，用户可导入或导出备份。系统备份行为取决于 Android 和设备设置。应用按功能声明通知、精确闹钟、开机恢复、全屏提醒、悬浮窗和前台服务等权限；具体可用性取决于系统和用户设置。
 
+截图转待办使用 Google ML Kit 在设备上识别图片；根据 Google 的说明，图片和识别结果不会由 ML Kit 发送给 Google，但组件可能联网收集设备、应用、安装标识及性能等诊断信息。应用声明网络权限以支持可选的在线 AI 整理；仅在用户确认后将识别文字发送至 DeepSeek，图片不会发送。API 密钥加密保存在设备上且不包含在应用备份中。
+
 导入引导提供了一段可复制的提示词，用户也可以自行选择外部 AI 工具整理课表；应用不会替用户将课表发送给 AI。如果选择向第三方 AI 上传课表、截图或文件，该服务会收到你提交的内容，其处理方式取决于服务提供方。提交前请检查并移除不愿分享的姓名、学号、联系方式等信息，并留意课程时间和地点也可能涉及隐私。备份文件同样可能包含个人数据，请妥善保管和分享。
 
 ## 许可
@@ -97,6 +99,8 @@ When reporting a problem, please include your phone model, Android version, step
 ## Data and permissions
 
 The app starts with empty data. Timetables, reminders, and appearance settings are stored on the device; users can import and export backups. System backup behavior depends on Android and device settings. Depending on the feature, the app declares permissions for notifications, exact alarms, boot recovery, full-screen reminders, overlays, and foreground services. Availability depends on the system and user settings.
+
+Screenshot-to-task uses Google ML Kit to recognize images on the device. According to Google, ML Kit does not send the images or recognition results to Google, but the SDK may collect device and application information, installation identifiers, and performance diagnostics over the network. The app requests internet access for optional online AI processing; recognized text is sent to DeepSeek only after user confirmation, and images are not sent. The API key is encrypted on the device and excluded from app backups.
 
 The import guide offers a prompt that you can copy. You may choose to use an external AI tool to organize a timetable; the app does not send your timetable to an AI service for you. If you upload a timetable, screenshot, or file to a third-party AI service, that service receives what you submit, and its handling of the data depends on the provider. Before submitting, remove information you do not wish to share, such as names, student IDs, and contact details. Class times and locations can also be sensitive. Backup files may contain personal data, so store and share them carefully.
 

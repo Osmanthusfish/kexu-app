@@ -1332,6 +1332,7 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
     var screenshotDraft by remember { mutableStateOf<com.schedule.app.data.ScreenshotTodoDraft?>(null) }
     var screenshotError by remember { mutableStateOf<String?>(null) }
     var readingScreenshot by remember { mutableStateOf(false) }
+    var showOcrDisclosure by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     val screenshotPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) actionScope.launch {
@@ -1364,7 +1365,7 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
                 colors = topBarTransparent(),
                 title = { Text("待办 / 备忘") },
                 actions = {
-                    TextButton(enabled = !readingScreenshot, onClick = { screenshotPicker.launch("image/*") }) {
+                    TextButton(enabled = !readingScreenshot, onClick = { showOcrDisclosure = true }) {
                         Icon(Icons.Filled.Image, null, Modifier.size(17.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(if (readingScreenshot) "识别中…" else "截图转待办")
@@ -1424,12 +1425,21 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
         }
     }
 
+    if (showOcrDisclosure) {
+        AlertDialog(
+            onDismissRequest = { showOcrDisclosure = false },
+            title = { Text("截图识别与隐私") },
+            text = { Text("截图和识别文字在设备上处理，不会由识别组件发送给 Google。Google ML Kit 组件可能联网收集设备、应用和性能等诊断信息。使用在线 AI 整理时会另行征求你的同意。") },
+            confirmButton = { TextButton(onClick = { showOcrDisclosure = false; screenshotPicker.launch("image/*") }) { Text("选择截图") } },
+            dismissButton = { TextButton(onClick = { showOcrDisclosure = false }) { Text("取消") } }
+        )
+    }
     screenshotError?.let { message ->
         AlertDialog(onDismissRequest = { screenshotError = null }, title = { Text("截图识别") },
             text = { Text(message) }, confirmButton = { TextButton(onClick = { screenshotError = null }) { Text("知道了") } })
     }
     screenshotDraft?.let { draft ->
-        ScreenshotTodoReviewDialog(draft, onDismiss = { screenshotDraft = null }) { todo ->
+        ScreenshotTodoReviewDialog(draft, onDismiss = { screenshotDraft = null }, onAiDraft = { screenshotDraft = it }) { todo ->
             vm.upsertTodo(todo)
             screenshotDraft = null
             actionScope.launch { snackbar.showSnackbar("已添加待办：${todo.title}") }

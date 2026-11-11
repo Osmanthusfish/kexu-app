@@ -50,6 +50,18 @@ class RegressionInstrumentation : Instrumentation() {
             ocrImage.delete()
             pass("bundled Chinese OCR reads the synthetic task and deadline screenshot locally")
             if (ocrOnly) {
+                val keyStore = TodoAiKeyStore(targetContext)
+                check(!keyStore.configured()) { "Refusing to overwrite a configured AI key" }
+                val sampleKey = "synthetic-test-" + java.util.UUID.randomUUID()
+                try {
+                    keyStore.save(sampleKey)
+                    check(keyStore.load() == sampleKey)
+                    val bytes = File(targetContext.noBackupFilesDir, "screenshot_todo_ai_key").readBytes()
+                    check(!bytes.toString(Charsets.ISO_8859_1).contains(sampleKey))
+                    keyStore.clear()
+                    check(!keyStore.configured())
+                    pass("AI key is encrypted and can be removed")
+                } finally { keyStore.clear() }
                 finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\\nPASS local Chinese OCR only\\n") })
                 return
             }
