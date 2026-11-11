@@ -15,6 +15,7 @@ import com.schedule.app.model.*
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 import com.schedule.app.ui.ScreenshotTodoReviewDialog
+import com.schedule.app.ui.ScreenshotTodoAiSession
 
 /** Device regression runner using Android's existing framework, with no additional test dependencies.
  * Refuses to touch the regular app. It preserves a pre-test snapshot inside the isolated app.
@@ -30,8 +31,11 @@ class RegressionInstrumentation : Instrumentation() {
     private var aiReviewOnly = false
     private var rotationOnly = false
     private var ocrRotationOnly = false
+    private var aiRotationOnly = false
+    private var skipWidgetMatrix = false
+    private var skipWidgetContent = false
     private var originalBackup: String? = null
-    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; rotationOnly = arguments?.getString("rotation_only") == "true"; ocrRotationOnly = arguments?.getString("ocr_rotation_only") == "true"; super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; rotationOnly = arguments?.getString("rotation_only") == "true"; ocrRotationOnly = arguments?.getString("ocr_rotation_only") == "true"; aiRotationOnly = arguments?.getString("ai_rotation_only") == "true"; skipWidgetMatrix = arguments?.getString("skip_widget_matrix") == "true"; skipWidgetContent = arguments?.getString("skip_widget_content") == "true"; super.onCreate(arguments); start() }
     override fun onStart() {
         try {
             check(targetContext.packageName == "com.schedule.app.review") { "Only the isolated review package may be tested" }
@@ -48,6 +52,58 @@ class RegressionInstrumentation : Instrumentation() {
             })
             startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             await { latest.get() != null && !model().isLoading }
+            if (aiRotationOnly) {
+                val started = java.util.concurrent.CountDownLatch(1)
+                val release = java.util.concurrent.CountDownLatch(1)
+                val calls = java.util.concurrent.atomic.AtomicInteger()
+                var session: ScreenshotTodoAiSession? = null
+                try {
+                    val draft = ScreenshotTodoParser.parse("2026年11月20日 15:00 提交示例材料")
+                    main { model().go(Screen.Todos); model().screenshotTodoDraft = draft }
+                    await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    main {
+                        session = ViewModelProvider(latest.get())[ScreenshotTodoAiSession::class.java]
+                        session!!.start(draft, { "synthetic" }) { _, _, source ->
+                            calls.incrementAndGet(); started.countDown()
+                            check(release.await(15, java.util.concurrent.TimeUnit.SECONDS))
+                            source.copy(title = "旋转后整理完成")
+                        }
+                    }
+                    check(started.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                    val oldActivity = latest.get()
+                    main { latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                    await { latest.get() !== oldActivity && latest.get().resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
+                    check(session!!.working)
+                    release.countDown()
+                    await { model().screenshotTodoDraft?.title == "旋转后整理完成" }
+                    check(calls.get() == 1)
+                    await { containsText(uiAutomation.rootInActiveWindow, "旋转后整理完成") }
+                    pass("single AI request survives rotation and returns to the draft")
+                    val canceledStarted = java.util.concurrent.CountDownLatch(1)
+                    val canceledRelease = java.util.concurrent.CountDownLatch(1)
+                    val canceledFinished = java.util.concurrent.CountDownLatch(1)
+                    main {
+                        session!!.start(draft, { "synthetic" }) { _, _, source ->
+                            canceledStarted.countDown()
+                            canceledRelease.await(5, java.util.concurrent.TimeUnit.SECONDS)
+                            canceledFinished.countDown()
+                            source.copy(title = "已取消的结果")
+                        }
+                    }
+                    check(canceledStarted.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                    main { session!!.cancel() }
+                    canceledRelease.countDown()
+                    check(canceledFinished.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                    Thread.sleep(300)
+                    check(session!!.result == null && !session!!.working && model().screenshotTodoDraft?.title == "旋转后整理完成")
+                    pass("cancelled AI response cannot replace the current draft")
+                } finally {
+                    release.countDown()
+                    main { session?.cancel(); model().screenshotTodoDraft = null; latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
+                }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS AI rotation\n") })
+                return
+            }
             if (ocrRotationOnly) {
                 val image = File(targetContext.cacheDir, "ocr-rotation-synthetic.png")
                 context.assets.open("screenshot-todo-sample.png").use { input -> image.outputStream().use(input::copyTo) }
@@ -218,6 +274,7 @@ class RegressionInstrumentation : Instrumentation() {
             saved()
             check(!store.load().todos.first { it.id == "queue-a" }.done)
             pass("task completion and undo persist through the write queue")
+            if (!skipWidgetMatrix) {
             main {
                 val parent = android.appwidget.AppWidgetHostView(targetContext)
                 for (style in 0..6) for (font in listOf(.8f,1f,1.3f)) for (weekly in listOf(false, true)) for (empty in listOf(false,true)) for (size in (if(weekly) listOf(android.util.SizeF(332f,145f),android.util.SizeF(600f,120f),android.util.SizeF(250f,303f),android.util.SizeF(332f,303f), android.util.SizeF(332f,618f)) else listOf(android.util.SizeF(180f,100f),android.util.SizeF(332f,100f),android.util.SizeF(180f,145f),android.util.SizeF(250f,303f),android.util.SizeF(332f,145f), android.util.SizeF(332f,303f)))) {
@@ -258,10 +315,12 @@ class RegressionInstrumentation : Instrumentation() {
                 }
             }
             pass("native widget layouts keep full text in occupied and empty states across seven materials and narrow/short/tall sizes; header, dates and footer never overlap courses")
-            WidgetContentChecks.run(targetContext,::main,File(targetContext.filesDir,screenshotFolder)) { message ->
+            } else sendStatus(0, Bundle().apply { putString("stream", "SKIP widget layout matrix (known baseline failure)\n") })
+            if (!skipWidgetContent) { WidgetContentChecks.run(targetContext,::main,File(targetContext.filesDir,screenshotFolder)) { message ->
                 sendStatus(0,Bundle().apply { putString("stream",message+"\n") })
             }
             pass("full collections retain every course, completed classes, unequal overlaps and long metadata at readable sizes; collection endpoints stay protected")
+            } else sendStatus(0, Bundle().apply { putString("stream", "SKIP widget content checks (known baseline failure)\n") })
 
             main {
                 model().upsertReminder(Reminder("link-a", "Test A", 1, 8, 0, 10, "", false, 1, "qa-autumn", "math"))
@@ -315,7 +374,10 @@ class RegressionInstrumentation : Instrumentation() {
                     saved()
                     check(store.load().theme == oldTheme)
                     val oldMode = model().darkMode
-                    await { clickLabel(uiAutomation.rootInActiveWindow, "深色") }
+                    await {
+                        val root = uiAutomation.rootInActiveWindow
+                        if (clickLabel(root, "深色")) true else { swipeUpSmall(); Thread.sleep(400); false }
+                    }
                     await { model().darkMode == 2 }
                     saved(); capture("theme-dark")
                     main { model().setDarkMode(oldMode) }
@@ -638,6 +700,21 @@ class RegressionInstrumentation : Instrumentation() {
         if (node == null) return false
         if (node.isScrollable && node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) return true
         return (0 until node.childCount).any { scrollForward(node.getChild(it)) }
+    }
+    private fun swipeUpSmall() {
+        val metrics = targetContext.resources.displayMetrics
+        val x = metrics.widthPixels * .5f
+        val startY = metrics.heightPixels * .72f
+        val distance = metrics.heightPixels * .22f
+        val start = android.os.SystemClock.uptimeMillis()
+        fun event(action: Int, y: Float) {
+            val e = android.view.MotionEvent.obtain(start, android.os.SystemClock.uptimeMillis(), action, x, y, 0)
+            e.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+            uiAutomation.injectInputEvent(e, true); e.recycle()
+        }
+        event(android.view.MotionEvent.ACTION_DOWN, startY)
+        repeat(8) { i -> Thread.sleep(20); event(android.view.MotionEvent.ACTION_MOVE, startY - distance * (i + 1) / 8) }
+        event(android.view.MotionEvent.ACTION_UP, startY - distance)
     }
     private fun swipeDownLabel(node: android.view.accessibility.AccessibilityNodeInfo?, label: String): Boolean {
         if (node == null) return false

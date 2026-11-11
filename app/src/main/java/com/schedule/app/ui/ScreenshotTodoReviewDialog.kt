@@ -16,10 +16,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schedule.app.data.ScreenshotTodoDraft
 import com.schedule.app.data.TodoAi
 import com.schedule.app.data.TodoAiKeyStore
@@ -34,9 +35,6 @@ import com.schedule.app.model.Todo
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun ScreenshotTodoReviewDialog(
@@ -47,14 +45,12 @@ fun ScreenshotTodoReviewDialog(
     onSave: (Todo) -> Unit
 ) {
     val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val keyStore = remember(ctx) { TodoAiKeyStore(ctx) }
+    val keyStore = remember(ctx.applicationContext) { TodoAiKeyStore(ctx.applicationContext) }
+    val aiSession: ScreenshotTodoAiSession = viewModel()
     var configured by remember { mutableStateOf(keyStore.configured()) }
     var showKey by remember { mutableStateOf(false) }
     var keyInput by remember { mutableStateOf("") }
     var showConsent by remember { mutableStateOf(false) }
-    var aiWorking by remember { mutableStateOf(false) }
-    var aiError by remember { mutableStateOf<String?>(null) }
     var title by rememberSaveable(draft) { mutableStateOf(draft.title) }
     var dueDate by rememberSaveable(draft) { mutableStateOf(draft.dueDate?.toString()) }
     var dueTime by rememberSaveable(draft) { mutableStateOf(draft.dueTime.orEmpty()) }
@@ -67,9 +63,15 @@ fun ScreenshotTodoReviewDialog(
     val timeValid = dueTime.isBlank() || runCatching { LocalTime.parse(dueTime) }.isSuccess
     val timeResolved = noDueDate || if (dueTime.isNotBlank()) timeReviewed else draft.ambiguousTimeText == null || skipAmbiguousTime
     val canSave = title.isNotBlank() && timeValid && timeResolved && (noDueDate || (dueDate != null && dateReviewed))
+    LaunchedEffect(aiSession.result) {
+        aiSession.result?.let { (source, organized) ->
+            aiSession.consumeResult()
+            if (source == draft) onAiDraft(organized)
+        }
+    }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { aiSession.cancel(); onDismiss() },
         title = { Text("检查识别结果") },
         text = {
             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
@@ -121,22 +123,23 @@ fun ScreenshotTodoReviewDialog(
                 if (!timeValid) Text("时间格式应为 HH:mm。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Text("识别文字：${draft.recognizedText.take(500)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row {
-                    TextButton(enabled = !aiWorking, onClick = { showKey = true }) { Text(if (configured) "管理 AI 密钥" else "设置 AI 密钥") }
-                    TextButton(enabled = !aiWorking, onClick = {
+                    TextButton(enabled = !aiSession.working, onClick = { showKey = true }) { Text(if (configured) "管理 AI 密钥" else "设置 AI 密钥") }
+                    TextButton(enabled = !aiSession.working, onClick = {
                         if (!configured) showKey = true else showConsent = true
-                    }) { Text(if (aiWorking) "AI 整理中…" else "AI 整理文字") }
+                    }) { Text(if (aiSession.working) "AI 整理中…" else "AI 整理文字") }
                 }
-                aiError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                aiSession.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
         },
         confirmButton = {
             TextButton(enabled = canSave, onClick = {
                 val date = dueDate?.takeIf { !noDueDate }?.let { LocalDate.parse(it) }
+                aiSession.cancel()
                 onSave(Todo(UUID.randomUUID().toString(), title.trim(), null, date?.toString(), false,
                     dueTime = if (date != null && dueTime.isNotBlank()) LocalTime.parse(dueTime).toString() else null))
             }) { Text("确认添加") }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        dismissButton = { TextButton(onClick = { aiSession.cancel(); onDismiss() }) { Text("取消") } }
     )
     if (chooseDate) DatePick(onDismiss = { chooseDate = false }) { selected ->
         dueDate = selected
@@ -152,12 +155,12 @@ fun ScreenshotTodoReviewDialog(
             OutlinedTextField(keyInput, { keyInput = it }, label = { Text("API Key") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
             if (configured) TextButton(onClick = {
                 runCatching { keyStore.clear() }.onSuccess { configured = false; keyInput = ""; showKey = false }
-                    .onFailure { aiError = "无法删除密钥，请重试。" }
+                    .onFailure { aiSession.showError("无法删除密钥，请重试。") }
             }) { Text("删除已保存的密钥") }
         } },
         confirmButton = { TextButton(enabled = keyInput.isNotBlank(), onClick = {
             runCatching { keyStore.save(keyInput) }.onSuccess { configured = true; keyInput = ""; showKey = false }
-                .onFailure { aiError = "无法保存密钥，请重试。" }
+                .onFailure { aiSession.showError("无法保存密钥，请重试。") }
         }) { Text("保存") } },
         dismissButton = { TextButton(onClick = { keyInput = ""; showKey = false }) { Text("取消") } }
     )
@@ -171,16 +174,7 @@ fun ScreenshotTodoReviewDialog(
         } },
         confirmButton = { TextButton(enabled = draft.recognizedText.length <= 20_000, onClick = {
             showConsent = false
-            aiWorking = true
-            aiError = null
-            scope.launch {
-                try {
-                    val result = withContext(Dispatchers.IO) { organize(draft.recognizedText, keyStore.load(), draft) }
-                    onAiDraft(result)
-                } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-                catch (_: Exception) { aiError = "AI 整理失败，请检查网络、密钥和账户状态。原草稿仍在。" }
-                finally { aiWorking = false }
-            }
+            aiSession.start(draft, keyStore::load, organize)
         }) { Text("同意并发送文字") } },
         dismissButton = { TextButton(onClick = { showConsent = false }) { Text("取消") } }
     )
