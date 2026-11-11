@@ -1423,10 +1423,10 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
             text = { Text(message) }, confirmButton = { TextButton(onClick = vm::dismissScreenshotTodoError) { Text("知道了") } })
     }
     vm.screenshotTodoDraft?.let { draft ->
-        ScreenshotTodoReviewDialog(draft, onDismiss = { vm.screenshotTodoDraft = null }, onAiDraft = { vm.screenshotTodoDraft = it }) { todo ->
-            vm.upsertTodo(todo)
-            vm.screenshotTodoDraft = null
-            actionScope.launch { snackbar.showSnackbar("已添加待办：${todo.title}") }
+        ScreenshotTodoReviewDialog(draft, onDismiss = { vm.screenshotTodoDraft = null }, onAiDraft = { vm.screenshotTodoDraft = it }, saving = vm.screenshotTodoSaving) { todo ->
+            vm.saveScreenshotTodo(todo, draft) { saved ->
+                if (saved) actionScope.launch { snackbar.showSnackbar("已添加待办：${todo.title}") }
+            }
         }
     }
 }

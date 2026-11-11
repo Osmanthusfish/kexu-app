@@ -35,8 +35,9 @@ class RegressionInstrumentation : Instrumentation() {
     private var skipWidgetMatrix = false
     private var skipWidgetContent = false
     private var pickerOnly = false
+    private var saveFailureOnly = false
     private var originalBackup: String? = null
-    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; rotationOnly = arguments?.getString("rotation_only") == "true"; ocrRotationOnly = arguments?.getString("ocr_rotation_only") == "true"; aiRotationOnly = arguments?.getString("ai_rotation_only") == "true"; skipWidgetMatrix = arguments?.getString("skip_widget_matrix") == "true"; skipWidgetContent = arguments?.getString("skip_widget_content") == "true"; pickerOnly = arguments?.getString("picker_only") == "true"; super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; rotationOnly = arguments?.getString("rotation_only") == "true"; ocrRotationOnly = arguments?.getString("ocr_rotation_only") == "true"; aiRotationOnly = arguments?.getString("ai_rotation_only") == "true"; skipWidgetMatrix = arguments?.getString("skip_widget_matrix") == "true"; skipWidgetContent = arguments?.getString("skip_widget_content") == "true"; pickerOnly = arguments?.getString("picker_only") == "true"; saveFailureOnly = arguments?.getString("save_failure_only") == "true"; super.onCreate(arguments); start() }
     override fun onStart() {
         try {
             check(targetContext.packageName == "com.schedule.app.review") { "Only the isolated review package may be tested" }
@@ -53,6 +54,42 @@ class RegressionInstrumentation : Instrumentation() {
             })
             startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             await { latest.get() != null && !model().isLoading }
+            if (saveFailureOnly) {
+                saved()
+                val store = Store(targetContext)
+                val before = store.load()
+                val original = store.dump(before)
+                val draft = ScreenshotTodoParser.parse("2026年11月20日 15:00 提交示例材料")
+                val result = AtomicReference<Boolean?>()
+                var mayHaveWritten = false
+                try {
+                    main { model().go(Screen.Todos); model().screenshotTodoDraft = draft }
+                    await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    check(setFirstEditableText(uiAutomation.rootInActiveWindow, "编辑后保留的测试事项"))
+                    val id = "synthetic-" + java.util.UUID.randomUUID()
+                    val invalid = Todo(id, "测试事项", null, "2026-11-20", false, dueTime = "25:00")
+                    main { model().saveScreenshotTodo(invalid, draft) { result.set(it) } }
+                    await { result.get() != null }
+                    saved()
+                    check(result.get() == false && model().screenshotTodoDraft == draft)
+                    check(model().errorMessage != null && store.load() == before)
+                    main { model().dismissError() }
+                    await { containsText(uiAutomation.rootInActiveWindow, "编辑后保留的测试事项") }
+                    result.set(null)
+                    mayHaveWritten = true
+                    main { model().saveScreenshotTodo(invalid.copy(dueTime = "15:00"), draft) { result.set(it) } }
+                    await { result.get() != null }
+                    saved()
+                    check(result.get() == true && model().screenshotTodoDraft == null)
+                    check(store.load().todos.any { it.id == id && it.dueTime == "15:00" })
+                    pass("failed screenshot task save preserves edited draft; successful retry persists it")
+                } finally {
+                    main { model().screenshotTodoDraft = null; model().dismissError(); if (mayHaveWritten) model().importJson(original) }
+                    if (mayHaveWritten) { saved(); check(store.load() == before) { "Test app data was not restored" } }
+                }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS screenshot save failure and retry\n") })
+                return
+            }
             if (pickerOnly) {
                 val store = Store(targetContext)
                 val before = store.load()

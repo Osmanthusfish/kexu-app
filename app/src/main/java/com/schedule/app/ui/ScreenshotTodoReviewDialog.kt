@@ -44,6 +44,7 @@ fun ScreenshotTodoReviewDialog(
     onDismiss: () -> Unit,
     onAiDraft: (ScreenshotTodoDraft) -> Unit,
     organize: (String, String, ScreenshotTodoDraft) -> ScreenshotTodoDraft = TodoAi::organize,
+    saving: Boolean = false,
     onSave: (Todo) -> Unit
 ) {
     val ctx = LocalContext.current
@@ -73,12 +74,12 @@ fun ScreenshotTodoReviewDialog(
     }
 
     AlertDialog(
-        onDismissRequest = { aiSession.cancel(); onDismiss() },
+        onDismissRequest = { if (!saving) { aiSession.cancel(); onDismiss() } },
         title = { Text("检查识别结果") },
         text = {
             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Text("识别在本机完成；只有你确认使用 AI 时才会发送识别文字，图片不会发送。保存前请核对内容。", style = MaterialTheme.typography.bodySmall)
-                OutlinedTextField(title, { title = it }, label = { Text("待办内容") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(title, { title = it }, label = { Text("待办内容") }, modifier = Modifier.fillMaxWidth(), enabled = !saving)
                 if (draft.multipleDateMentions) Text("截图中有多个日期，请确认哪个才是截止日期。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 if (draft.sourceDateText != null) {
                     Text(
@@ -91,34 +92,34 @@ fun ScreenshotTodoReviewDialog(
                     Text("没有识别到截止日期，请选择日期，或明确标记为无截止日期。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { chooseDate = true }, enabled = !noDueDate, modifier = Modifier.weight(1f)) {
+                    OutlinedButton(onClick = { chooseDate = true }, enabled = !noDueDate && !saving, modifier = Modifier.weight(1f)) {
                         Text(dueDate ?: "选择截止日期")
                     }
-                    if (dueDate != null) TextButton(onClick = { dueDate = null; dateReviewed = false }) { Text("清除") }
+                    if (dueDate != null) TextButton(enabled = !saving, onClick = { dueDate = null; dateReviewed = false }) { Text("清除") }
                 }
                 if (dueDate != null && !noDueDate) {
-                    Row(Modifier.fillMaxWidth().toggleable(value = dateReviewed, role = Role.Checkbox, onValueChange = { dateReviewed = it })) {
+                    Row(Modifier.fillMaxWidth().toggleable(value = dateReviewed, enabled = !saving, role = Role.Checkbox, onValueChange = { dateReviewed = it })) {
                         Checkbox(checked = dateReviewed, onCheckedChange = null)
                         Text("确认 $dueDate 是截止日期", modifier = Modifier.weight(1f))
                     }
                 }
-                Row(Modifier.fillMaxWidth().toggleable(value = noDueDate, role = Role.Checkbox, onValueChange = {
+                Row(Modifier.fillMaxWidth().toggleable(value = noDueDate, enabled = !saving, role = Role.Checkbox, onValueChange = {
                         noDueDate = it
                         if (it) { dueDate = null; dateReviewed = true } else dateReviewed = false
                     })) {
                     Checkbox(checked = noDueDate, onCheckedChange = null)
                     Text("这条待办没有截止日期", modifier = Modifier.weight(1f).then(Modifier))
                 }
-                OutlinedTextField(dueTime, { dueTime = it; timeReviewed = false }, label = { Text("截止时间（可选，HH:mm）") }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !noDueDate)
+                OutlinedTextField(dueTime, { dueTime = it; timeReviewed = false }, label = { Text("截止时间（可选，HH:mm）") }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !noDueDate && !saving)
                 if (dueTime.isNotBlank() && !noDueDate && timeValid) {
-                    Row(Modifier.fillMaxWidth().toggleable(value = timeReviewed, role = Role.Checkbox, onValueChange = { timeReviewed = it })) {
+                    Row(Modifier.fillMaxWidth().toggleable(value = timeReviewed, enabled = !saving, role = Role.Checkbox, onValueChange = { timeReviewed = it })) {
                         Checkbox(checked = timeReviewed, onCheckedChange = null)
                         Text("确认 $dueTime 是截止时间", modifier = Modifier.weight(1f))
                     }
                 }
                 if (draft.ambiguousTimeText != null) Text("时间“${draft.ambiguousTimeText}”不明确，请核对并填写 24 小时制时间。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 if (draft.ambiguousTimeText != null && dueTime.isBlank() && !noDueDate) {
-                    Row(Modifier.fillMaxWidth().toggleable(value = skipAmbiguousTime, role = Role.Checkbox, onValueChange = { skipAmbiguousTime = it })) {
+                    Row(Modifier.fillMaxWidth().toggleable(value = skipAmbiguousTime, enabled = !saving, role = Role.Checkbox, onValueChange = { skipAmbiguousTime = it })) {
                         Checkbox(checked = skipAmbiguousTime, onCheckedChange = null)
                         Text("确认不设置截止时间", modifier = Modifier.weight(1f))
                     }
@@ -126,8 +127,8 @@ fun ScreenshotTodoReviewDialog(
                 if (!timeValid && !noDueDate) Text("时间格式应为 HH:mm。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Text("识别文字：${draft.recognizedText.take(500)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row {
-                    TextButton(enabled = !aiSession.working, onClick = { showKey = true }) { Text(if (configured) "管理 AI 密钥" else "设置 AI 密钥") }
-                    TextButton(enabled = !aiSession.working, onClick = {
+                    TextButton(enabled = !saving && !aiSession.working, onClick = { showKey = true }) { Text(if (configured) "管理 AI 密钥" else "设置 AI 密钥") }
+                    TextButton(enabled = !saving && !aiSession.working, onClick = {
                         if (!configured) showKey = true else showConsent = true
                     }) { Text(if (aiSession.working) "AI 整理中…" else "AI 整理文字") }
                 }
@@ -135,14 +136,14 @@ fun ScreenshotTodoReviewDialog(
             }
         },
         confirmButton = {
-            TextButton(enabled = canSave, onClick = {
+            TextButton(enabled = canSave && !saving, onClick = {
                 val date = dueDate?.takeIf { !noDueDate }?.let { LocalDate.parse(it) }
                 aiSession.cancel()
                 onSave(Todo(UUID.randomUUID().toString(), title.trim(), null, date?.toString(), false,
                     dueTime = if (date != null && dueTime.isNotBlank()) LocalTime.parse(dueTime).toString() else null))
-            }) { Text("确认添加") }
+            }) { Text(if (saving) "保存中…" else "确认添加") }
         },
-        dismissButton = { TextButton(onClick = { aiSession.cancel(); onDismiss() }) { Text("取消") } }
+        dismissButton = { TextButton(enabled = !saving, onClick = { aiSession.cancel(); onDismiss() }) { Text("取消") } }
     )
     if (chooseDate) DatePick(onDismiss = { chooseDate = false }) { selected ->
         dueDate = selected

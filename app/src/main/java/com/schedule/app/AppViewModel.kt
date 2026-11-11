@@ -40,6 +40,8 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         private set
     var readingScreenshot by mutableStateOf(false)
         private set
+    var screenshotTodoSaving by mutableStateOf(false)
+        private set
 
     fun dismissScreenshotTodoError() { screenshotTodoError = null }
     fun recognizeScreenshotTodo(uri: android.net.Uri) {
@@ -190,6 +192,18 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
     fun upsertCountdown(c: Countdown) = mutate { it.copy(countdowns = it.countdowns.upsert(c) { v -> v.id }) }
     fun deleteCountdown(id: String) = mutate { it.copy(countdowns = it.countdowns.filterNot { c -> c.id == id }) }
     fun upsertTodo(t: Todo) = mutate { it.copy(todos = it.todos.upsert(t) { v -> v.id }) }
+    fun saveScreenshotTodo(t: Todo, source: ScreenshotTodoDraft, onComplete: (Boolean) -> Unit) {
+        if (screenshotTodoSaving) return
+        screenshotTodoSaving = true
+        transact(onComplete = { success ->
+            // A post-write refresh may fail even though the item was already published.
+            val saved = success || data.todos.any { it.id == t.id }
+            if (saved && !success) errorMessage = "待办已保存，但刷新状态时出现问题，请重新打开应用检查。"
+            screenshotTodoSaving = false
+            if (saved && screenshotTodoDraft == source) screenshotTodoDraft = null
+            onComplete(saved)
+        }) { old -> ReminderRules.synchronize(old.copy(todos = old.todos.upsert(t) { v -> v.id })).also { store.save(it) } }
+    }
     fun deleteTodo(id: String) = mutate { it.copy(todos = it.todos.filterNot { t -> t.id == id }) }
     fun upsertCourseChange(change: CourseChange) = mutate { OccurrenceRules.put(it, change) }
     fun deleteCourseChange(id: String) = mutate { it.copy(courseChanges = it.courseChanges.filterNot { c -> c.id == id }) }
