@@ -53,6 +53,8 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
                 else screenshotTodoDraft = ScreenshotTodoParser.parse(text)
             } catch (cancelled: CancellationException) {
                 throw cancelled
+            } catch (_: ScreenshotTooLargeException) {
+                screenshotTodoError = "图片尺寸过大，请先裁剪图片后再试。"
             } catch (_: Exception) {
                 screenshotTodoError = "图片识别失败，请换一张清晰的截图再试。"
             } finally { readingScreenshot = false }

@@ -64,7 +64,7 @@ fun ScreenshotTodoReviewDialog(
     var chooseDate by rememberSaveable(draft) { mutableStateOf(false) }
     val timeValid = dueTime.isBlank() || runCatching { LocalTime.parse(dueTime) }.isSuccess
     val timeResolved = noDueDate || if (dueTime.isNotBlank()) timeReviewed else draft.ambiguousTimeText == null || skipAmbiguousTime
-    val canSave = title.isNotBlank() && timeValid && timeResolved && (noDueDate || (dueDate != null && dateReviewed))
+    val canSave = title.isNotBlank() && (noDueDate || timeValid) && timeResolved && (noDueDate || (dueDate != null && dateReviewed))
     LaunchedEffect(aiSession.result) {
         aiSession.result?.let { (source, organized) ->
             aiSession.consumeResult()
@@ -102,11 +102,11 @@ fun ScreenshotTodoReviewDialog(
                         Text("确认 $dueDate 是截止日期", modifier = Modifier.weight(1f))
                     }
                 }
-                Row {
-                    Checkbox(checked = noDueDate, onCheckedChange = {
+                Row(Modifier.fillMaxWidth().toggleable(value = noDueDate, role = Role.Checkbox, onValueChange = {
                         noDueDate = it
                         if (it) { dueDate = null; dateReviewed = true } else dateReviewed = false
-                    })
+                    })) {
+                    Checkbox(checked = noDueDate, onCheckedChange = null)
                     Text("这条待办没有截止日期", modifier = Modifier.weight(1f).then(Modifier))
                 }
                 OutlinedTextField(dueTime, { dueTime = it; timeReviewed = false }, label = { Text("截止时间（可选，HH:mm）") }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !noDueDate)
@@ -118,12 +118,12 @@ fun ScreenshotTodoReviewDialog(
                 }
                 if (draft.ambiguousTimeText != null) Text("时间“${draft.ambiguousTimeText}”不明确，请核对并填写 24 小时制时间。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 if (draft.ambiguousTimeText != null && dueTime.isBlank() && !noDueDate) {
-                    Row {
-                        Checkbox(checked = skipAmbiguousTime, onCheckedChange = { skipAmbiguousTime = it })
+                    Row(Modifier.fillMaxWidth().toggleable(value = skipAmbiguousTime, role = Role.Checkbox, onValueChange = { skipAmbiguousTime = it })) {
+                        Checkbox(checked = skipAmbiguousTime, onCheckedChange = null)
                         Text("确认不设置截止时间", modifier = Modifier.weight(1f))
                     }
                 }
-                if (!timeValid) Text("时间格式应为 HH:mm。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                if (!timeValid && !noDueDate) Text("时间格式应为 HH:mm。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Text("识别文字：${draft.recognizedText.take(500)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Row {
                     TextButton(enabled = !aiSession.working, onClick = { showKey = true }) { Text(if (configured) "管理 AI 密钥" else "设置 AI 密钥") }

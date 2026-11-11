@@ -253,6 +253,27 @@ class RegressionInstrumentation : Instrumentation() {
                 check(!isEnabled(uiAutomation.rootInActiveWindow, "确认添加"))
                 check(savedTodo.get() == null)
                 pass("multiple date expressions display a warning and require review")
+                val invalidTime = multiple.copy(dueTime = "invalid")
+                main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(invalidTime, {}, {}, onSave = { savedTodo.set(it) }) } } }
+                await { containsText(uiAutomation.rootInActiveWindow, "这条待办没有截止日期") }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "这条待办没有截止日期"))
+                await { isEnabled(uiAutomation.rootInActiveWindow, "确认添加") }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认添加"))
+                await { savedTodo.get() != null }
+                check(savedTodo.get()?.dueDate == null && savedTodo.get()?.dueTime == null)
+                pass("explicitly removing the deadline is not blocked by an invalid old time")
+                val noTime = ScreenshotTodoParser.parse("2026年11月20日3点提交示例材料")
+                savedTodo.set(null)
+                main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(noTime, {}, {}, onSave = { savedTodo.set(it) }) } } }
+                await { containsText(uiAutomation.rootInActiveWindow, "确认 2026-11-20 是截止日期") }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认 2026-11-20 是截止日期"))
+                repeat(5) { if (!containsText(uiAutomation.rootInActiveWindow, "确认不设置截止时间")) scrollForward(uiAutomation.rootInActiveWindow) }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认不设置截止时间"))
+                await { isEnabled(uiAutomation.rootInActiveWindow, "确认添加") }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认添加"))
+                await { savedTodo.get() != null }
+                check(savedTodo.get()?.dueDate == "2026-11-20" && savedTodo.get()?.dueTime == null)
+                pass("user can explicitly save an ambiguous time as unset")
                 finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS review requires date and time confirmation\n") })
                 return
             }
@@ -282,6 +303,25 @@ class RegressionInstrumentation : Instrumentation() {
                 check(ambiguousText.contains("明天") && ambiguousText.contains("3点")) { "Ambiguous synthetic screenshot was not recognized" }
                 check(ambiguousDraft.dueTime == null && ambiguousDraft.ambiguousTimeText != null && ambiguousDraft.needsDateConfirmation)
                 pass("ambiguous screenshot time is left for user confirmation")
+                val oversized = runCatching { recognizeFixture("screenshot-todo-oversized-synthetic.png") }
+                check(oversized.exceptionOrNull() is ScreenshotTooLargeException) { "Oversized image was not rejected before OCR" }
+                val largeImage = File(targetContext.cacheDir, "ocr-large-synthetic.png")
+                try {
+                    context.assets.open("screenshot-todo-oversized-synthetic.png").use { input -> largeImage.outputStream().use(input::copyTo) }
+                    main { model().screenshotTodoDraft = null; model().recognizeScreenshotTodo(android.net.Uri.fromFile(largeImage)) }
+                    await { !model().readingScreenshot && model().screenshotTodoError != null }
+                    check(model().screenshotTodoDraft == null && model().screenshotTodoError!!.contains("裁剪"))
+                    main { model().dismissScreenshotTodoError() }
+                } finally { largeImage.delete() }
+                val blank = File(targetContext.cacheDir, "ocr-blank-synthetic.png")
+                try {
+                    val bitmap = Bitmap.createBitmap(240, 240, Bitmap.Config.ARGB_8888)
+                    bitmap.eraseColor(android.graphics.Color.WHITE)
+                    blank.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+                    bitmap.recycle()
+                    check(ScreenshotTodoOcr.recognize(targetContext, android.net.Uri.fromFile(blank)).isBlank())
+                } finally { blank.delete() }
+                pass("blank images produce no task and oversized images are rejected")
                 val keyStore = TodoAiKeyStore(targetContext)
                 check(!keyStore.configured()) { "Refusing to overwrite a configured AI key" }
                 val sampleKey = "synthetic-test-" + java.util.UUID.randomUUID()
