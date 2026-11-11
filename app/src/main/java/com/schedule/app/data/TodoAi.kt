@@ -56,9 +56,15 @@ object TodoAi {
         val date = dateString?.let { LocalDate.parse(it) }
         val timeUncertain = o.optBoolean("timeUncertain", false)
         val time = if (timeUncertain) null else timeString?.let { LocalTime.parse(it).toString() }
+        val ambiguousTime = when {
+            timeUncertain -> "模型未能确定时间"
+            time == null && original.ambiguousTimeText != null -> original.ambiguousTimeText
+            time == null && original.dueTime != null -> "模型未给出时间，原识别结果为 ${original.dueTime}"
+            else -> null
+        }
         return original.copy(title = title, dueDate = date, dueTime = time,
             sourceDateText = dateString, needsDateConfirmation = true,
-            ambiguousTimeText = if (timeUncertain) "模型未能确定时间" else null)
+            ambiguousTimeText = ambiguousTime)
     }
 
     fun organize(text: String, apiKey: String, original: ScreenshotTodoDraft): ScreenshotTodoDraft {

@@ -31,6 +31,19 @@ class TodoAiTest {
         assertNotNull(result.ambiguousTimeText)
     }
 
+    @Test fun `missing model time does not silently discard a locally recognized time`() {
+        val response = """{"title":"提交材料","dueDate":"2026-11-20","dueTime":null,"timeUncertain":false}"""
+        val ambiguous = ScreenshotTodoParser.parse("明天3点提交材料", LocalDate.of(2026, 11, 1))
+        val definite = ScreenshotTodoParser.parse("明天15:00提交材料", LocalDate.of(2026, 11, 1))
+        val ambiguousResult = TodoAi.parseResponse(response, ambiguous)
+        val definiteResult = TodoAi.parseResponse(response, definite)
+        assertNull(ambiguousResult.dueTime)
+        assertEquals(ambiguous.ambiguousTimeText, ambiguousResult.ambiguousTimeText)
+        assertNull(definiteResult.dueTime)
+        assertTrue(definiteResult.ambiguousTimeText!!.contains("15:00"))
+        assertNull(TodoAi.parseResponse(response, original).ambiguousTimeText)
+    }
+
     @Test fun `invalid model responses fail instead of silently saving`() {
         listOf("not json", """{"title":""}""", """{"title":null}""", """{"title":"示例","dueDate":"2026-02-30"}""", """{"title":"示例","dueTime":"25:00"}""").forEach {
             assertTrue(runCatching { TodoAi.parseResponse(it, original) }.isFailure)
