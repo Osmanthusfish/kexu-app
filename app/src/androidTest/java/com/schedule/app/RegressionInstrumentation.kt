@@ -152,6 +152,8 @@ class RegressionInstrumentation : Instrumentation() {
                         }
                     }
                     check(started.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                    await { containsText(uiAutomation.rootInActiveWindow, "停止 AI 整理") }
+                    check(!setFirstEditableText(uiAutomation.rootInActiveWindow, "不应覆盖草稿")) { "AI 请求期间表单仍可编辑" }
                     val oldActivity = latest.get()
                     main { latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
                     await { latest.get() !== oldActivity && latest.get().resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
