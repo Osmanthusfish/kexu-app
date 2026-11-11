@@ -53,7 +53,9 @@ class RegressionInstrumentation : Instrumentation() {
                     keyStore.save("synthetic-test-" + java.util.UUID.randomUUID())
                     val draft = ScreenshotTodoParser.parse("2026年11月20日 15:00 提交示例材料")
                     val savedTodo = AtomicReference<Todo?>()
-                    main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, {}, { savedTodo.set(it) }) } } }
+                    val sentText = AtomicReference<String?>()
+                    val resultDraft = AtomicReference<ScreenshotTodoDraft?>()
+                    main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, { resultDraft.set(it) }, organize = { text, _, original -> sentText.set(text); original.copy(title = "整理后的示例") }, onSave = { savedTodo.set(it) }) } } }
                     await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
                     repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "AI 整理文字")) scrollForward(uiAutomation.rootInActiveWindow) }
                     check(clickLabel(uiAutomation.rootInActiveWindow, "AI 整理文字")) { "AI button not accessible" }
@@ -62,9 +64,27 @@ class RegressionInstrumentation : Instrumentation() {
                     check(containsText(uiAutomation.rootInActiveWindow, "图片不会发送"))
                     check(clickLabel(uiAutomation.rootInActiveWindow, "取消"))
                     await { !containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
-                    check(savedTodo.get() == null)
+                    check(savedTodo.get() == null && sentText.get() == null)
                     check(containsText(uiAutomation.rootInActiveWindow, "检查识别结果"))
                     pass("AI consent shows text and cancel returns to the unsaved draft")
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "AI 整理文字"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "同意并发送文字"))
+                    await { resultDraft.get() != null }
+                    check(sentText.get() == draft.recognizedText && resultDraft.get()?.title == "整理后的示例" && savedTodo.get() == null)
+                    pass("AI starts only after consent and returns an unsaved draft")
+                    main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, {}, organize = { _, _, _ -> throw IllegalStateException("synthetic failure") }, onSave = { savedTodo.set(it) }) } } }
+                    await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "AI 整理文字")) scrollForward(uiAutomation.rootInActiveWindow) }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "AI 整理文字"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "同意并发送文字"))
+                    await {
+                        val root = uiAutomation.rootInActiveWindow
+                        if (containsText(root, "原草稿仍在")) true else { scrollForward(root); false }
+                    }
+                    check(savedTodo.get() == null)
+                    pass("AI failure leaves the draft unsaved")
                 } finally { keyStore.clear() }
                 finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS AI consent cancellation\n") })
                 return
@@ -72,7 +92,7 @@ class RegressionInstrumentation : Instrumentation() {
             if (reviewOnly) {
                 val savedTodo = AtomicReference<Todo?>()
                 val draft = ScreenshotTodoParser.parse("2026年11月20日 15:00 提交示例材料")
-                main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, {}, { savedTodo.set(it) }) } } }
+                main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, {}, onSave = { savedTodo.set(it) }) } } }
                 await { containsText(uiAutomation.rootInActiveWindow, "确认添加") }
                 check(!isEnabled(uiAutomation.rootInActiveWindow, "确认添加")) { "Draft saved without confirmation" }
                 check(clickLabel(uiAutomation.rootInActiveWindow, "确认 2026-11-20 是截止日期"))

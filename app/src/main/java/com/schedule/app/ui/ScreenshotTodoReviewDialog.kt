@@ -42,6 +42,7 @@ fun ScreenshotTodoReviewDialog(
     draft: ScreenshotTodoDraft,
     onDismiss: () -> Unit,
     onAiDraft: (ScreenshotTodoDraft) -> Unit,
+    organize: (String, String, ScreenshotTodoDraft) -> ScreenshotTodoDraft = TodoAi::organize,
     onSave: (Todo) -> Unit
 ) {
     val ctx = LocalContext.current
@@ -173,7 +174,7 @@ fun ScreenshotTodoReviewDialog(
             aiError = null
             scope.launch {
                 try {
-                    val result = withContext(Dispatchers.IO) { TodoAi.organize(draft.recognizedText, keyStore.load(), draft) }
+                    val result = withContext(Dispatchers.IO) { organize(draft.recognizedText, keyStore.load(), draft) }
                     onAiDraft(result)
                 } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
                 catch (_: Exception) { aiError = "AI 整理失败，请检查网络、密钥和账户状态。原草稿仍在。" }
