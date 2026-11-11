@@ -49,7 +49,7 @@ object TodoAi {
     fun parseResponse(content: String, original: ScreenshotTodoDraft): ScreenshotTodoDraft {
         require(content.length <= 20_000)
         val o = JSONObject(content)
-        val title = o.optString("title", "").trim().take(300)
+        val title = o.optString("title", "").trim().takeUnless { o.isNull("title") }.orEmpty().take(300)
         require(title.isNotEmpty())
         val dateString = o.optString("dueDate", "").takeUnless { it.isBlank() || it == "null" }
         val timeString = o.optString("dueTime", "").takeUnless { it.isBlank() || it == "null" }
@@ -62,8 +62,15 @@ object TodoAi {
     }
 
     fun organize(text: String, apiKey: String, original: ScreenshotTodoDraft): ScreenshotTodoDraft {
+        return organizeWithConnection(text, apiKey, original) { url -> url.openConnection() as HttpsURLConnection }
+    }
+
+    internal fun organizeWithConnection(
+        text: String, apiKey: String, original: ScreenshotTodoDraft,
+        openConnection: (URL) -> HttpsURLConnection
+    ): ScreenshotTodoDraft {
         require(text.isNotBlank() && text.length <= 20_000 && apiKey.isNotBlank())
-        val connection = URL("https://api.deepseek.com/chat/completions").openConnection() as HttpsURLConnection
+        val connection = openConnection(URL("https://api.deepseek.com/chat/completions"))
         try {
             connection.requestMethod = "POST"
             connection.instanceFollowRedirects = false

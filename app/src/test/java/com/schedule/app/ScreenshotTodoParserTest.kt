@@ -73,4 +73,11 @@ class ScreenshotTodoParserTest {
             assertTrue(draft.ambiguousTimeText != null)
         }
     }
+
+    @Test fun chatSenderAndTimestampDoNotBecomeTheTaskWhenThereIsAnActionLine() {
+        val draft = ScreenshotTodoParser.parse("示例同学 09:30\n请于11月20日15:00前提交调查问卷", today)
+        assertTrue(draft.title.contains("提交调查问卷"))
+        assertEquals(null, draft.dueTime)
+        assertTrue(draft.ambiguousTimeText != null)
+    }
 }

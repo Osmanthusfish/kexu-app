@@ -81,7 +81,14 @@ object ScreenshotTodoParser {
                 if (hour in 0..23 && minute in 0..59) "%02d:%02d".format(hour, minute) else null
             }
 
-        val candidateLine = normalized.lineSequence().map(String::trim).firstOrNull { it.isNotBlank() } ?: ""
+        // Chat screenshots commonly start with a sender or message timestamp, not the task.
+        // Prefer a line containing an action; the result remains editable and is never auto-saved.
+        val actionWords = Regex("提交|上交|完成|填写|报名|参加|缴费|交付|领取|发送|上传|下载|准备|携带|截止|作业|任务|报告|问卷|申请")
+        val candidateLine = normalized.lineSequence().map(String::trim).filter { it.isNotBlank() }
+            .maxByOrNull { line ->
+                val actions = actionWords.findAll(line).count().coerceAtMost(3)
+                actions * 10 + (if (line.length >= 6) 1 else 0)
+            }.orEmpty()
         val title = candidateLine
             .replace(iso, " ").replace(monthDay, " ").replace(slashMonthDay, " ")
             .replace(time24, " ").replace(chineseTime, " ")
