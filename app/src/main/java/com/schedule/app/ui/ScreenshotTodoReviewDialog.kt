@@ -79,6 +79,7 @@ fun ScreenshotTodoReviewDialog(
             Column(Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Text("识别在本机完成；只有你确认使用 AI 时才会发送识别文字，图片不会发送。保存前请核对内容。", style = MaterialTheme.typography.bodySmall)
                 OutlinedTextField(title, { title = it }, label = { Text("待办内容") }, modifier = Modifier.fillMaxWidth())
+                if (draft.multipleDateMentions) Text("截图中有多个日期，请确认哪个才是截止日期。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 if (draft.sourceDateText != null) {
                     Text(
                         if (draft.needsDateConfirmation) "日期“${draft.sourceDateText}”不够明确，请确认或重新选择。"

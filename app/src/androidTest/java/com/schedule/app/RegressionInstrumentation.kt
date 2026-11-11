@@ -246,6 +246,13 @@ class RegressionInstrumentation : Instrumentation() {
                 check(clickLabel(uiAutomation.rootInActiveWindow, "确认添加"))
                 await { savedTodo.get() != null }
                 check(savedTodo.get()?.dueDate == "2026-11-20" && savedTodo.get()?.dueTime == "15:00")
+                val multiple = ScreenshotTodoParser.parse("今天发布通知，2026年11月20日提交示例材料")
+                savedTodo.set(null)
+                main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(multiple, {}, {}, onSave = { savedTodo.set(it) }) } } }
+                await { containsText(uiAutomation.rootInActiveWindow, "截图中有多个日期") }
+                check(!isEnabled(uiAutomation.rootInActiveWindow, "确认添加"))
+                check(savedTodo.get() == null)
+                pass("multiple date expressions display a warning and require review")
                 finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS review requires date and time confirmation\n") })
                 return
             }

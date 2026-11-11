@@ -10,7 +10,8 @@ data class ScreenshotTodoDraft(
     val sourceDateText: String?,
     val needsDateConfirmation: Boolean,
     val ambiguousTimeText: String?,
-    val recognizedText: String
+    val recognizedText: String,
+    val multipleDateMentions: Boolean = false
 )
 
 /** Conservative text extraction: a date inferred from an incomplete expression must be confirmed. */
@@ -35,7 +36,7 @@ object ScreenshotTodoParser {
             runCatching { LocalDate.of(today.year, m.groupValues[1].toInt(), m.groupValues[2].toInt()) }
                 .getOrNull()?.let { explicit += m.value to it }
         }
-        slashMonthDay.findAll(normalized).forEach { m ->
+        slashMonthDay.findAll(normalized).filterNot { m -> isoRanges.any { it.first <= m.range.first && it.last >= m.range.last } }.forEach { m ->
             runCatching { LocalDate.of(today.year, m.groupValues[1].toInt(), m.groupValues[2].toInt()) }
                 .getOrNull()?.let { explicit += m.value to it }
         }
@@ -58,7 +59,9 @@ object ScreenshotTodoParser {
             today.plusDays(offset.toLong()) to m.value
         }
 
-        val selected = explicit.firstOrNull()?.let { Triple(it.second, it.first, explicit.size != 1 || !it.first.startsWith("20")) }
+        val relativeMentions = Regex("大后天|后天|明天|今天|下周[一二三四五六日天]|下星期[一二三四五六日天]|周[一二三四五六日天]|星期[一二三四五六日天]").findAll(normalized).count()
+        val multipleDates = explicit.size + relativeMentions > 1
+        val selected = explicit.firstOrNull()?.let { Triple(it.second, it.first, multipleDates || !it.first.startsWith("20")) }
             // Screenshot capture time is unknown: relative dates must never be treated as certain.
             ?: relative?.let { Triple(it.first, it.second, true) }
             ?: weekday?.let { Triple(it.first, it.second, true) }
@@ -104,7 +107,8 @@ object ScreenshotTodoParser {
             sourceDateText = selected?.second,
             needsDateConfirmation = selected?.third ?: true,
             ambiguousTimeText = if (multipleTimes) "识别到多个时间" else chineseMatch?.value?.takeIf { time == null },
-            recognizedText = text
+            recognizedText = text,
+            multipleDateMentions = multipleDates
         )
     }
 }

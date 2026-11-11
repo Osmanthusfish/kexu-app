@@ -58,6 +58,19 @@ class ScreenshotTodoParserTest {
     @Test fun conflictingDatesRequireConfirmation() {
         val draft = ScreenshotTodoParser.parse("11月20日开题，11月22日提交", today)
         assertTrue(draft.needsDateConfirmation)
+        assertTrue(draft.multipleDateMentions)
+    }
+
+    @Test fun mixedRelativeAndFullDatesAreExplicitlyMarked() {
+        val draft = ScreenshotTodoParser.parse("今天发布通知，2026年11月20日前提交", today)
+        assertTrue(draft.multipleDateMentions)
+        assertTrue(draft.needsDateConfirmation)
+    }
+
+    @Test fun fullSlashDateIsNotCountedTwice() {
+        val draft = ScreenshotTodoParser.parse("2026/11/20 提交报告", today)
+        assertFalse(draft.multipleDateMentions)
+        assertEquals(LocalDate.of(2026, 11, 20), draft.dueDate)
     }
 
     @Test fun multipleTimesAreNotGuessed() {
