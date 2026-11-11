@@ -27,8 +27,9 @@ class RegressionInstrumentation : Instrumentation() {
     private var skyOnly = false
     private var ocrOnly = false
     private var reviewOnly = false
+    private var aiReviewOnly = false
     private var originalBackup: String? = null
-    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; super.onCreate(arguments); start() }
     override fun onStart() {
         try {
             check(targetContext.packageName == "com.schedule.app.review") { "Only the isolated review package may be tested" }
@@ -45,6 +46,29 @@ class RegressionInstrumentation : Instrumentation() {
             })
             startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             await { latest.get() != null && !model().isLoading }
+            if (aiReviewOnly) {
+                val keyStore = TodoAiKeyStore(targetContext)
+                check(!keyStore.configured()) { "Refusing to overwrite a configured AI key" }
+                try {
+                    keyStore.save("synthetic-test-" + java.util.UUID.randomUUID())
+                    val draft = ScreenshotTodoParser.parse("2026年11月20日 15:00 提交示例材料")
+                    val savedTodo = AtomicReference<Todo?>()
+                    main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, {}, { savedTodo.set(it) }) } } }
+                    await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "AI 整理文字")) scrollForward(uiAutomation.rootInActiveWindow) }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "AI 整理文字")) { "AI button not accessible" }
+                    await { containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
+                    check(containsText(uiAutomation.rootInActiveWindow, draft.recognizedText))
+                    check(containsText(uiAutomation.rootInActiveWindow, "图片不会发送"))
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "取消"))
+                    await { !containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
+                    check(savedTodo.get() == null)
+                    check(containsText(uiAutomation.rootInActiveWindow, "检查识别结果"))
+                    pass("AI consent shows text and cancel returns to the unsaved draft")
+                } finally { keyStore.clear() }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS AI consent cancellation\n") })
+                return
+            }
             if (reviewOnly) {
                 val savedTodo = AtomicReference<Todo?>()
                 val draft = ScreenshotTodoParser.parse("2026年11月20日 15:00 提交示例材料")
