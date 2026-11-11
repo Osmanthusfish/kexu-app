@@ -10,11 +10,14 @@
 - **灵活调整**：处理单次调课、停课与补课，保留原有周期课程。
 - **桌面小组件**：在桌面查看今天或整周课程，快捷打开相关页面。
 - **提醒与待办**：管理课程提醒、作业、待办和倒数日。
+- **截图转待办**：在“待办 / 备忘”中选择截图，在设备上识别后编辑草稿并确认日期和时间；也可自行配置 DeepSeek 密钥，按次确认后整理识别文字。
 - **外观与数据**：调整主题和小组件外观，导入或导出备份。
 
 ## 下载
 
 支持 Android 8.0（API 26）及以上。[点击下载课序 APK](https://github.com/Osmanthusfish/kexu-app/releases/download/v1.48/kexu-1.48.apk)；源码 ZIP 不能直接安装。
+
+截图转待办是此开发分支新增的功能，上述已发布的 v1.48 APK 尚不包含它。
 
 安装更新前建议导出并妥善保存数据。若提示签名不兼容，请先备份数据，避免直接卸载原应用。
 
@@ -68,11 +71,14 @@ Kexu is an Android timetable app built with Kotlin and Jetpack Compose. It suppo
 - **One-time changes:** reschedule, cancel, or add a make-up class without changing the recurring course.
 - **Widgets:** see today's or this week's courses on your home screen and open related pages quickly.
 - **Reminders and tasks:** manage class reminders, assignments, tasks, and countdowns.
+- **Screenshot to task:** choose an image in Tasks, review the on-device recognition result, and confirm the date and time. Optionally configure a DeepSeek key and approve each request to organize the recognized text.
 - **Appearance and data:** customize themes and widgets, and import or export backups.
 
 ## Download
 
 Requires Android 8.0 (API 26) or later. [Download the Kexu APK](https://github.com/Osmanthusfish/kexu-app/releases/download/v1.48/kexu-1.48.apk). The source ZIP is not an installable APK.
+
+Screenshot to task is new to this development branch and is not included in the released v1.48 APK linked above.
 
 Export and safely store your data before installing an update. If signatures are incompatible, back up your data before considering any uninstall.
 
