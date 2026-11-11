@@ -1329,25 +1329,9 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
     }
     val snackbar = remember { SnackbarHostState() }
     val actionScope = rememberCoroutineScope()
-    var screenshotDraft by remember { mutableStateOf<com.schedule.app.data.ScreenshotTodoDraft?>(null) }
-    var screenshotError by remember { mutableStateOf<String?>(null) }
-    var readingScreenshot by remember { mutableStateOf(false) }
     var showOcrDisclosure by remember { mutableStateOf(false) }
-    val ctx = LocalContext.current
     val screenshotPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) actionScope.launch {
-            readingScreenshot = true
-            screenshotError = null
-            try {
-                val recognized = withContext(Dispatchers.IO) { com.schedule.app.data.ScreenshotTodoOcr.recognize(ctx, uri) }
-                if (recognized.isBlank()) screenshotError = "没有识别到文字，请试试更清晰的截图。"
-                else screenshotDraft = com.schedule.app.data.ScreenshotTodoParser.parse(recognized)
-            } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                throw cancelled
-            } catch (_: Exception) {
-                screenshotError = "图片识别失败，请换一张清晰的截图再试。"
-            } finally { readingScreenshot = false }
-        }
+        if (uri != null) vm.recognizeScreenshotTodo(uri)
     }
     fun toggle(todo: Todo) {
         vm.setTodoDone(todo.id, !todo.done)
@@ -1365,10 +1349,10 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
                 colors = topBarTransparent(),
                 title = { Text("待办 / 备忘") },
                 actions = {
-                    TextButton(enabled = !readingScreenshot, onClick = { showOcrDisclosure = true }) {
+                    TextButton(enabled = !vm.readingScreenshot, onClick = { showOcrDisclosure = true }) {
                         Icon(Icons.Filled.Image, null, Modifier.size(17.dp))
                         Spacer(Modifier.width(4.dp))
-                        Text(if (readingScreenshot) "识别中…" else "截图转待办")
+                        Text(if (vm.readingScreenshot) "识别中…" else "截图转待办")
                     }
                 },
                 navigationIcon = { IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } }
@@ -1434,14 +1418,14 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
             dismissButton = { TextButton(onClick = { showOcrDisclosure = false }) { Text("取消") } }
         )
     }
-    screenshotError?.let { message ->
-        AlertDialog(onDismissRequest = { screenshotError = null }, title = { Text("截图识别") },
-            text = { Text(message) }, confirmButton = { TextButton(onClick = { screenshotError = null }) { Text("知道了") } })
+    vm.screenshotTodoError?.let { message ->
+        AlertDialog(onDismissRequest = vm::dismissScreenshotTodoError, title = { Text("截图识别") },
+            text = { Text(message) }, confirmButton = { TextButton(onClick = vm::dismissScreenshotTodoError) { Text("知道了") } })
     }
-    screenshotDraft?.let { draft ->
-        ScreenshotTodoReviewDialog(draft, onDismiss = { screenshotDraft = null }, onAiDraft = { screenshotDraft = it }) { todo ->
+    vm.screenshotTodoDraft?.let { draft ->
+        ScreenshotTodoReviewDialog(draft, onDismiss = { vm.screenshotTodoDraft = null }, onAiDraft = { vm.screenshotTodoDraft = it }) { todo ->
             vm.upsertTodo(todo)
-            screenshotDraft = null
+            vm.screenshotTodoDraft = null
             actionScope.launch { snackbar.showSnackbar("已添加待办：${todo.title}") }
         }
     }

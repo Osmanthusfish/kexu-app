@@ -34,6 +34,30 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         private set
     val importDraft = ImportDraft()
     var pendingBackupImport by mutableStateOf<Pair<String, AppData>?>(null)
+    // The full OCR text stays in memory and is not persisted in app backups or saved state.
+    var screenshotTodoDraft by mutableStateOf<ScreenshotTodoDraft?>(null)
+    var screenshotTodoError by mutableStateOf<String?>(null)
+        private set
+    var readingScreenshot by mutableStateOf(false)
+        private set
+
+    fun dismissScreenshotTodoError() { screenshotTodoError = null }
+    fun recognizeScreenshotTodo(uri: android.net.Uri) {
+        if (readingScreenshot) return
+        viewModelScope.launch {
+            readingScreenshot = true
+            screenshotTodoError = null
+            try {
+                val text = withContext(Dispatchers.IO) { ScreenshotTodoOcr.recognize(getApplication(), uri) }
+                if (text.isBlank()) screenshotTodoError = "没有识别到文字，请试试更清晰的截图。"
+                else screenshotTodoDraft = ScreenshotTodoParser.parse(text)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                screenshotTodoError = "图片识别失败，请换一张清晰的截图再试。"
+            } finally { readingScreenshot = false }
+        }
+    }
 
     private var screenState by mutableStateOf(runCatching { Screen.valueOf(saved.get<String>("screen") ?: "Home") }.getOrDefault(Screen.Home))
     var screen: Screen

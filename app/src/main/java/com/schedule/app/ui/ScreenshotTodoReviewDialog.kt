@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -54,15 +55,15 @@ fun ScreenshotTodoReviewDialog(
     var showConsent by remember { mutableStateOf(false) }
     var aiWorking by remember { mutableStateOf(false) }
     var aiError by remember { mutableStateOf<String?>(null) }
-    var title by remember(draft) { mutableStateOf(draft.title) }
-    var dueDate by remember(draft) { mutableStateOf(draft.dueDate?.toString()) }
-    var dueTime by remember(draft) { mutableStateOf(draft.dueTime.orEmpty()) }
+    var title by rememberSaveable(draft) { mutableStateOf(draft.title) }
+    var dueDate by rememberSaveable(draft) { mutableStateOf(draft.dueDate?.toString()) }
+    var dueTime by rememberSaveable(draft) { mutableStateOf(draft.dueTime.orEmpty()) }
     // An OCR screenshot can contain message timestamps as well as deadlines.
-    var dateReviewed by remember(draft) { mutableStateOf(false) }
-    var timeReviewed by remember(draft) { mutableStateOf(false) }
-    var noDueDate by remember(draft) { mutableStateOf(false) }
-    var skipAmbiguousTime by remember(draft) { mutableStateOf(false) }
-    var chooseDate by remember(draft) { mutableStateOf(false) }
+    var dateReviewed by rememberSaveable(draft) { mutableStateOf(false) }
+    var timeReviewed by rememberSaveable(draft) { mutableStateOf(false) }
+    var noDueDate by rememberSaveable(draft) { mutableStateOf(false) }
+    var skipAmbiguousTime by rememberSaveable(draft) { mutableStateOf(false) }
+    var chooseDate by rememberSaveable(draft) { mutableStateOf(false) }
     val timeValid = dueTime.isBlank() || runCatching { LocalTime.parse(dueTime) }.isSuccess
     val timeResolved = noDueDate || if (dueTime.isNotBlank()) timeReviewed else draft.ambiguousTimeText == null || skipAmbiguousTime
     val canSave = title.isNotBlank() && timeValid && timeResolved && (noDueDate || (dueDate != null && dateReviewed))

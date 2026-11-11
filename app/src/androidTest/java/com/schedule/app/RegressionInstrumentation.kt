@@ -28,8 +28,10 @@ class RegressionInstrumentation : Instrumentation() {
     private var ocrOnly = false
     private var reviewOnly = false
     private var aiReviewOnly = false
+    private var rotationOnly = false
+    private var ocrRotationOnly = false
     private var originalBackup: String? = null
-    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; rotationOnly = arguments?.getString("rotation_only") == "true"; ocrRotationOnly = arguments?.getString("ocr_rotation_only") == "true"; super.onCreate(arguments); start() }
     override fun onStart() {
         try {
             check(targetContext.packageName == "com.schedule.app.review") { "Only the isolated review package may be tested" }
@@ -46,6 +48,45 @@ class RegressionInstrumentation : Instrumentation() {
             })
             startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             await { latest.get() != null && !model().isLoading }
+            if (ocrRotationOnly) {
+                val image = File(targetContext.cacheDir, "ocr-rotation-synthetic.png")
+                context.assets.open("screenshot-todo-sample.png").use { input -> image.outputStream().use(input::copyTo) }
+                try {
+                    main {
+                        model().go(Screen.Todos)
+                        model().screenshotTodoDraft = null
+                        model().recognizeScreenshotTodo(android.net.Uri.fromFile(image))
+                        check(model().readingScreenshot)
+                        latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                    }
+                    await { model().screenshotTodoDraft != null && !model().readingScreenshot }
+                    await { latest.get().resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
+                    check(model().screenshotTodoDraft!!.recognizedText.contains("实验报告"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    pass("OCR result survives an orientation change while recognition is running")
+                } finally {
+                    main { model().screenshotTodoDraft = null; latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
+                    image.delete()
+                }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS OCR rotation\n") })
+                return
+            }
+            if (rotationOnly) {
+                try {
+                    main { model().go(Screen.Todos); model().screenshotTodoDraft = ScreenshotTodoParser.parse("2026年11月20日 15:00 提交示例材料") }
+                    await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    check(setFirstEditableText(uiAutomation.rootInActiveWindow, "已编辑的示例事项"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "已编辑的示例事项") }
+                    main { latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                    await { latest.get().resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE && containsText(uiAutomation.rootInActiveWindow, "已编辑的示例事项") }
+                    check(model().screenshotTodoDraft != null)
+                    pass("rotation retains the screenshot draft and edited title")
+                } finally {
+                    main { model().screenshotTodoDraft = null; latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
+                }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS screenshot draft rotation\n") })
+                return
+            }
             if (aiReviewOnly) {
                 val keyStore = TodoAiKeyStore(targetContext)
                 check(!keyStore.configured()) { "Refusing to overwrite a configured AI key" }
@@ -573,6 +614,14 @@ class RegressionInstrumentation : Instrumentation() {
             return false
         }
         return (0 until node.childCount).any { isEnabled(node.getChild(it), label) }
+    }
+    private fun setFirstEditableText(node: android.view.accessibility.AccessibilityNodeInfo?, text: String): Boolean {
+        if (node == null) return false
+        if (node.isEditable) {
+            val args = Bundle().apply { putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
+            return node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        }
+        return (0 until node.childCount).any { setFirstEditableText(node.getChild(it), text) }
     }
     private fun clickLabel(node: android.view.accessibility.AccessibilityNodeInfo?, label: String): Boolean {
         if (node == null) return false
