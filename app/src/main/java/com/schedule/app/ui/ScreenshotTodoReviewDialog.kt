@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -26,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.schedule.app.data.ScreenshotTodoDraft
@@ -152,7 +154,7 @@ fun ScreenshotTodoReviewDialog(
         title = { Text("DeepSeek API 密钥") },
         text = { Column {
             Text("密钥加密保存在本机、不写入备份。调用 DeepSeek 可能产生费用。", style = MaterialTheme.typography.bodySmall)
-            OutlinedTextField(keyInput, { keyInput = it }, label = { Text("API Key") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+            OutlinedTextField(keyInput, { keyInput = it }, label = { Text("API Key") }, visualTransformation = PasswordVisualTransformation(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false), singleLine = true)
             if (configured) TextButton(onClick = {
                 runCatching { keyStore.clear() }.onSuccess { configured = false; keyInput = ""; showKey = false }
                     .onFailure { aiSession.showError("无法删除密钥，请重试。") }

@@ -34,8 +34,9 @@ class RegressionInstrumentation : Instrumentation() {
     private var aiRotationOnly = false
     private var skipWidgetMatrix = false
     private var skipWidgetContent = false
+    private var pickerOnly = false
     private var originalBackup: String? = null
-    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; rotationOnly = arguments?.getString("rotation_only") == "true"; ocrRotationOnly = arguments?.getString("ocr_rotation_only") == "true"; aiRotationOnly = arguments?.getString("ai_rotation_only") == "true"; skipWidgetMatrix = arguments?.getString("skip_widget_matrix") == "true"; skipWidgetContent = arguments?.getString("skip_widget_content") == "true"; super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; rotationOnly = arguments?.getString("rotation_only") == "true"; ocrRotationOnly = arguments?.getString("ocr_rotation_only") == "true"; aiRotationOnly = arguments?.getString("ai_rotation_only") == "true"; skipWidgetMatrix = arguments?.getString("skip_widget_matrix") == "true"; skipWidgetContent = arguments?.getString("skip_widget_content") == "true"; pickerOnly = arguments?.getString("picker_only") == "true"; super.onCreate(arguments); start() }
     override fun onStart() {
         try {
             check(targetContext.packageName == "com.schedule.app.review") { "Only the isolated review package may be tested" }
@@ -52,6 +53,50 @@ class RegressionInstrumentation : Instrumentation() {
             })
             startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             await { latest.get() != null && !model().isLoading }
+            if (pickerOnly) {
+                val store = Store(targetContext)
+                val before = store.load()
+                val original = store.dump(before)
+                val values = android.content.ContentValues().apply {
+                    put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "kexu-synthetic-" + java.util.UUID.randomUUID() + ".png")
+                    put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/KexuSyntheticTests")
+                }
+                val resolver = targetContext.contentResolver
+                val uri = checkNotNull(resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values))
+                var wroteTodo = false
+                try {
+                    context.assets.open("screenshot-todo-sample.png").use { input -> checkNotNull(resolver.openOutputStream(uri)).use(input::copyTo) }
+                    main { model().go(Screen.Todos) }
+                    await { containsText(uiAutomation.rootInActiveWindow, "截图转待办") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "截图转待办"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "截图识别与隐私") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "选择截图"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "Photos") }
+                    await { clickFirstPhoto(uiAutomation.rootInActiveWindow) }
+                    await { model().screenshotTodoDraft != null && containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    check(model().screenshotTodoDraft!!.recognizedText.contains("实验报告")) { "Unexpected picker image" }
+                    check(setFirstEditableText(uiAutomation.rootInActiveWindow, "合成截图测试事项"))
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "确认 2026-11-20 是截止日期"))
+                    repeat(5) { if (!containsText(uiAutomation.rootInActiveWindow, "确认 15:00 是截止时间")) scrollForward(uiAutomation.rootInActiveWindow) }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "确认 15:00 是截止时间"))
+                    await { isEnabled(uiAutomation.rootInActiveWindow, "确认添加") }
+                    wroteTodo = true
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "确认添加"))
+                    saved()
+                    check(store.load().todos.any { it.title == "合成截图测试事项" && it.dueDate == "2026-11-20" && it.dueTime == "15:00" })
+                    pass("image selection result flows through OCR, review and existing task storage")
+                } finally {
+                    resolver.delete(uri, null, null)
+                    main { model().screenshotTodoDraft = null; if (wroteTodo) model().importJson(original) }
+                    if (wroteTodo) {
+                        saved()
+                        check(store.load() == before) { "Test app data was not restored" }
+                    }
+                }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS system picker end-to-end\n") })
+                return
+            }
             if (aiRotationOnly) {
                 val started = java.util.concurrent.CountDownLatch(1)
                 val release = java.util.concurrent.CountDownLatch(1)
@@ -213,6 +258,23 @@ class RegressionInstrumentation : Instrumentation() {
             ocrImage.delete()
             pass("bundled Chinese OCR reads the synthetic task and deadline screenshot locally")
             if (ocrOnly) {
+                fun recognizeFixture(asset: String): String {
+                    val image = File(targetContext.cacheDir, "ocr-fixture-synthetic.png")
+                    return try {
+                        context.assets.open(asset).use { input -> image.outputStream().use(input::copyTo) }
+                        ScreenshotTodoOcr.recognize(targetContext, android.net.Uri.fromFile(image))
+                    } finally { image.delete() }
+                }
+                val chatText = recognizeFixture("screenshot-todo-chat-synthetic.png")
+                val chatDraft = ScreenshotTodoParser.parse(chatText)
+                check(chatText.contains("09:30") && chatText.contains("15:00") && chatDraft.title.contains("问卷")) { "Synthetic chat was not recognized as expected" }
+                check(chatDraft.dueTime == null && chatDraft.ambiguousTimeText != null) { "Chat timestamp was guessed as a deadline" }
+                pass("chat screenshot does not mistake its message timestamp for the deadline")
+                val ambiguousText = recognizeFixture("screenshot-todo-ambiguous-synthetic.png")
+                val ambiguousDraft = ScreenshotTodoParser.parse(ambiguousText)
+                check(ambiguousText.contains("明天") && ambiguousText.contains("3点")) { "Ambiguous synthetic screenshot was not recognized" }
+                check(ambiguousDraft.dueTime == null && ambiguousDraft.ambiguousTimeText != null && ambiguousDraft.needsDateConfirmation)
+                pass("ambiguous screenshot time is left for user confirmation")
                 val keyStore = TodoAiKeyStore(targetContext)
                 check(!keyStore.configured()) { "Refusing to overwrite a configured AI key" }
                 val sampleKey = "synthetic-test-" + java.util.UUID.randomUUID()
@@ -684,6 +746,13 @@ class RegressionInstrumentation : Instrumentation() {
             return node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args)
         }
         return (0 until node.childCount).any { setFirstEditableText(node.getChild(it), text) }
+    }
+    private fun clickFirstPhoto(node: android.view.accessibility.AccessibilityNodeInfo?): Boolean {
+        if (node == null) return false
+        if (node.contentDescription?.toString()?.startsWith("Photo taken on ") == true && node.isClickable) {
+            return node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)
+        }
+        return (0 until node.childCount).any { clickFirstPhoto(node.getChild(it)) }
     }
     private fun clickLabel(node: android.view.accessibility.AccessibilityNodeInfo?, label: String): Boolean {
         if (node == null) return false
