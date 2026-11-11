@@ -9,6 +9,7 @@ data class ScreenshotTodoDraft(
     val dueTime: String?,
     val sourceDateText: String?,
     val needsDateConfirmation: Boolean,
+    val ambiguousTimeText: String?,
     val recognizedText: String
 )
 
@@ -53,17 +54,22 @@ object ScreenshotTodoParser {
                 else -> DayOfWeek.SUNDAY
             }
             val next = (target.value - today.dayOfWeek.value + 7) % 7
-            val offset = if (m.value.startsWith("下")) (if (next == 0) 7 else next) + 7 else if (next == 0) 7 else next
+            val offset = if (m.value.startsWith("下")) 7 - today.dayOfWeek.value + target.value else if (next == 0) 7 else next
             today.plusDays(offset.toLong()) to m.value
         }
 
         val selected = explicit.firstOrNull()?.let { Triple(it.second, it.first, explicit.size != 1 || !it.first.startsWith("20")) }
-            ?: relative?.let { Triple(it.first, it.second, false) }
+            // Screenshot capture time is unknown: relative dates must never be treated as certain.
+            ?: relative?.let { Triple(it.first, it.second, true) }
             ?: weekday?.let { Triple(it.first, it.second, true) }
+        val chineseMatch = chineseTime.find(normalized)
         val time = time24.find(normalized)?.let { "%02d:%02d".format(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }
-            ?: chineseTime.find(normalized)?.let { m ->
+            ?: chineseMatch?.let { m ->
                 var hour = m.groupValues[2].toInt()
                 val period = m.groupValues[1]
+                // A bare 1–12 o'clock could mean either morning or afternoon.
+                if (period.isEmpty() && hour in 1..12) return@let null
+                if (period.isNotEmpty() && hour !in 1..12) return@let null
                 if ((period == "下午" || period == "晚上") && hour < 12) hour += 12
                 if (period == "上午" && hour == 12) hour = 0
                 val minute = if (m.groupValues[3] == "" && m.value.contains("半")) 30 else m.groupValues[3].toIntOrNull() ?: 0
@@ -85,6 +91,7 @@ object ScreenshotTodoParser {
             dueTime = time,
             sourceDateText = selected?.second,
             needsDateConfirmation = selected?.third ?: true,
+            ambiguousTimeText = chineseMatch?.value?.takeIf { time == null },
             recognizedText = text
         )
     }

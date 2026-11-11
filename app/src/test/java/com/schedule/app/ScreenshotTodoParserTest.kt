@@ -22,7 +22,7 @@ class ScreenshotTodoParserTest {
         val draft = ScreenshotTodoParser.parse("明天 23:59 前提交作业", today)
         assertEquals(LocalDate.of(2026, 11, 12), draft.dueDate)
         assertEquals("23:59", draft.dueTime)
-        assertFalse(draft.needsDateConfirmation)
+        assertTrue(draft.needsDateConfirmation)
     }
 
     @Test fun monthDayWithoutYearNeedsConfirmation() {
@@ -35,6 +35,18 @@ class ScreenshotTodoParserTest {
         val draft = ScreenshotTodoParser.parse("周五交实验", today)
         assertEquals(LocalDate.of(2026, 11, 13), draft.dueDate)
         assertTrue(draft.needsDateConfirmation)
+    }
+
+    @Test fun nextWeekdayUsesNextCalendarWeek() {
+        val draft = ScreenshotTodoParser.parse("下周五交实验", today)
+        assertEquals(LocalDate.of(2026, 11, 20), draft.dueDate)
+        assertTrue(draft.needsDateConfirmation)
+    }
+
+    @Test fun bareClockTimeIsNotGuessed() {
+        val draft = ScreenshotTodoParser.parse("明天3点交报告", today)
+        assertEquals(null, draft.dueTime)
+        assertEquals("3点", draft.ambiguousTimeText)
     }
 
     @Test fun missingDateNeverInventsOne() {

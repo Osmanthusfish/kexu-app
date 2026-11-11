@@ -1341,6 +1341,8 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
                 val recognized = withContext(Dispatchers.IO) { com.schedule.app.data.ScreenshotTodoOcr.recognize(ctx, uri) }
                 if (recognized.isBlank()) screenshotError = "没有识别到文字，请试试更清晰的截图。"
                 else screenshotDraft = com.schedule.app.data.ScreenshotTodoParser.parse(recognized)
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (_: Exception) {
                 screenshotError = "图片识别失败，请换一张清晰的截图再试。"
             } finally { readingScreenshot = false }

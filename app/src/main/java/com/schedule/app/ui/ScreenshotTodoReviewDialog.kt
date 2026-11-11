@@ -36,11 +36,14 @@ fun ScreenshotTodoReviewDialog(
     var title by remember(draft) { mutableStateOf(draft.title) }
     var dueDate by remember(draft) { mutableStateOf(draft.dueDate?.toString()) }
     var dueTime by remember(draft) { mutableStateOf(draft.dueTime.orEmpty()) }
-    var dateReviewed by remember(draft) { mutableStateOf(!draft.needsDateConfirmation && draft.dueDate != null) }
+    // An OCR screenshot can contain message timestamps as well as deadlines.
+    var dateReviewed by remember(draft) { mutableStateOf(false) }
     var noDueDate by remember(draft) { mutableStateOf(false) }
+    var skipAmbiguousTime by remember(draft) { mutableStateOf(false) }
     var chooseDate by remember(draft) { mutableStateOf(false) }
     val timeValid = dueTime.isBlank() || runCatching { LocalTime.parse(dueTime) }.isSuccess
-    val canSave = title.isNotBlank() && timeValid && (noDueDate || (dueDate != null && dateReviewed))
+    val timeReviewed = noDueDate || draft.ambiguousTimeText == null || dueTime.isNotBlank() || skipAmbiguousTime
+    val canSave = title.isNotBlank() && timeValid && timeReviewed && (noDueDate || (dueDate != null && dateReviewed))
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -65,6 +68,12 @@ fun ScreenshotTodoReviewDialog(
                     }
                     if (dueDate != null) TextButton(onClick = { dueDate = null; dateReviewed = false }) { Text("清除") }
                 }
+                if (dueDate != null && !noDueDate) {
+                    Row {
+                        Checkbox(checked = dateReviewed, onCheckedChange = { dateReviewed = it })
+                        Text("确认 $dueDate 是截止日期", modifier = Modifier.weight(1f))
+                    }
+                }
                 Row {
                     Checkbox(checked = noDueDate, onCheckedChange = {
                         noDueDate = it
@@ -73,6 +82,13 @@ fun ScreenshotTodoReviewDialog(
                     Text("这条待办没有截止日期", modifier = Modifier.weight(1f).then(Modifier))
                 }
                 OutlinedTextField(dueTime, { dueTime = it }, label = { Text("截止时间（可选，HH:mm）") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                if (draft.ambiguousTimeText != null) Text("时间“${draft.ambiguousTimeText}”不明确，请核对并填写 24 小时制时间。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                if (draft.ambiguousTimeText != null && dueTime.isBlank() && !noDueDate) {
+                    Row {
+                        Checkbox(checked = skipAmbiguousTime, onCheckedChange = { skipAmbiguousTime = it })
+                        Text("确认不设置截止时间", modifier = Modifier.weight(1f))
+                    }
+                }
                 if (!timeValid) Text("时间格式应为 HH:mm。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 Text("识别文字：${draft.recognizedText.take(500)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
