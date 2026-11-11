@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.ScheduleApp" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- 悬浮响铃窗的弹入/弹出动画 -->
+    <style name="RingOverlayAnimation">
+        <item name="android:windowEnterAnimation">@anim/ring_overlay_enter</item>
+        <item name="android:windowExitAnimation">@anim/ring_overlay_exit</item>
+    </style>
+</resources>

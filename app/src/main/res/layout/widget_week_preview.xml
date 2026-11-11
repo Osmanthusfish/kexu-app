@@ -1,0 +1,56 @@
+<?xml version='1.0' encoding='utf-8'?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/widget_surface" android:padding="12dp">
+  <LinearLayout android:id="@+id/widgetHeader" android:layout_width="match_parent" android:layout_height="36dp" android:orientation="horizontal" android:baselineAligned="false" android:gravity="center_vertical">
+    <TextView android:id="@+id/tvHeader" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:textStyle="bold" android:textSize="14sp" android:maxLines="1" android:ellipsize="end" android:text="示例 · 整周" android:textColor="#253047" />
+    <TextView android:id="@+id/widgetPrevious" style="@style/WidgetSmallAction" android:text="‹" android:contentDescription="组件上一周" />
+    <TextView android:id="@+id/widgetThisWeek" android:layout_width="40dp" android:layout_height="36dp" android:gravity="center" android:text="本周" android:textSize="10sp" android:contentDescription="组件回本周" />
+    <TextView android:id="@+id/widgetNext" style="@style/WidgetSmallAction" android:text="›" android:contentDescription="组件下一周" />
+    <TextView android:id="@+id/widgetSettings" style="@style/WidgetSmallAction" android:text="⋯" android:textSize="23sp" android:contentDescription="自定义小组件" />
+  </LinearLayout>
+  <TextView android:layout_width="match_parent" android:layout_height="8dp" android:importantForAccessibility="no" />
+  <LinearLayout android:id="@+id/widgetDatesContainer" android:layout_width="match_parent" android:layout_height="40dp" android:orientation="vertical">
+    <LinearLayout android:id="@+id/widgetDates" android:layout_width="match_parent" android:layout_height="32dp" android:orientation="horizontal" android:baselineAligned="false">
+      <TextView android:id="@+id/weekLabel1" style="@style/WidgetDayLabel" android:layout_height="32dp" android:text="一" android:visibility="visible" />
+      <TextView android:id="@+id/weekLabel2" style="@style/WidgetDayLabel" android:layout_height="32dp" android:text="二" android:visibility="visible" />
+      <TextView android:id="@+id/weekLabel3" style="@style/WidgetDayLabel" android:layout_height="32dp" android:text="三" android:visibility="visible" />
+      <TextView android:id="@+id/weekLabel4" style="@style/WidgetDayLabel" android:layout_height="32dp" android:text="四" android:visibility="visible" />
+      <TextView android:id="@+id/weekLabel5" style="@style/WidgetDayLabel" android:layout_height="32dp" android:text="五" android:visibility="visible" />
+      <TextView android:id="@+id/weekLabel6" style="@style/WidgetDayLabel" android:layout_height="32dp" android:text="六" android:visibility="gone" />
+      <TextView android:id="@+id/weekLabel7" style="@style/WidgetDayLabel" android:layout_height="32dp" android:text="日" android:visibility="gone" />
+    </LinearLayout>
+    <TextView android:layout_width="match_parent" android:layout_height="8dp" android:importantForAccessibility="no" />
+  </LinearLayout>
+  <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+    <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:paddingHorizontal="2dp">
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_0" android:text="高等数学&#10;A201&#10;张老师&#10;1–2节" />
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_1" android:text="大学英语&#10;A201&#10;张老师&#10;3–4节" />
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_2" android:text="电路分析&#10;A201&#10;张老师&#10;5–6节" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:paddingHorizontal="2dp">
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_1" android:text="大学英语&#10;A201&#10;张老师&#10;1–2节" />
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_2" android:text="电路分析&#10;A201&#10;张老师&#10;3–4节" />
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_3" android:text="工程实践&#10;A201&#10;张老师&#10;5–6节" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:paddingHorizontal="2dp">
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_2" android:text="电路分析&#10;A201&#10;张老师&#10;1–2节" />
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_3" android:text="工程实践&#10;A201&#10;张老师&#10;3–4节" />
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_4" android:text="体育&#10;A201&#10;张老师&#10;5–6节" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:paddingHorizontal="2dp">
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_3" android:text="工程实践&#10;A201&#10;张老师&#10;1–2节" />
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_4" android:text="体育&#10;A201&#10;张老师&#10;3–4节" />
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_5" android:text="高等数学&#10;A201&#10;张老师&#10;5–6节" />
+    </LinearLayout>
+    <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:orientation="vertical" android:paddingHorizontal="2dp">
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_4" android:text="体育&#10;A201&#10;张老师&#10;1–2节" />
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_5" android:text="高等数学&#10;A201&#10;张老师&#10;3–4节" />
+      <TextView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginBottom="4dp" android:gravity="center" android:textSize="9sp" android:textColor="#253047" android:includeFontPadding="false" android:background="@drawable/widget_course_0" android:text="大学英语&#10;A201&#10;张老师&#10;5–6节" />
+    </LinearLayout>
+  </LinearLayout>
+  <TextView android:id="@+id/widgetCaption" android:layout_width="match_parent" android:layout_height="18dp" android:textSize="9sp" android:gravity="center_vertical" android:maxLines="1" android:includeFontPadding="false" android:text="整周一览" android:textColor="#253047" />
+  <LinearLayout android:id="@+id/widgetActions" android:layout_width="match_parent" android:layout_height="40dp" android:paddingTop="4dp" android:orientation="horizontal" android:baselineAligned="false" android:visibility="gone">
+    <TextView android:id="@+id/widgetOpen" style="@style/WidgetAction" android:text="课表" android:contentDescription="打开课表" />
+    <TextView android:id="@+id/widgetAddTask" style="@style/WidgetAction" android:text="＋ 作业" android:contentDescription="添加作业" />
+    <TextView android:id="@+id/widgetAlarms" style="@style/WidgetAction" android:text="提醒" android:contentDescription="打开课程提醒" />
+  </LinearLayout>
+</LinearLayout>

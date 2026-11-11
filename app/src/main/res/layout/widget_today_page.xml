@@ -1,0 +1,16 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical">
+ <LinearLayout android:id="@+id/widgetHeader" android:layout_width="match_parent" android:layout_height="36dp" android:orientation="horizontal" android:baselineAligned="false" android:gravity="center_vertical">
+  <TextView android:id="@+id/tvHeader" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="center_vertical" android:textStyle="bold" android:textSize="14sp" android:maxLines="1" android:ellipsize="end" />
+  <TextView android:id="@+id/tvInfo" android:layout_width="36dp" android:layout_height="match_parent" android:gravity="center" android:textSize="10sp" />
+  <TextView android:id="@+id/widgetSettings" style="@style/WidgetSmallAction" android:text="⋯" android:textSize="23sp" android:contentDescription="自定义小组件" />
+ </LinearLayout>
+ <TextView android:layout_width="match_parent" android:layout_height="8dp" android:importantForAccessibility="no" />
+ <ViewFlipper android:id="@+id/widgetBody" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:clipChildren="true" android:clipToPadding="true" android:animateFirstView="false" />
+ <TextView android:id="@+id/widgetCaption" android:layout_width="match_parent" android:layout_height="18dp" android:textSize="9sp" android:gravity="center_vertical" android:maxLines="1" android:includeFontPadding="false" />
+ <TextView android:id="@+id/tvTodo" android:layout_width="match_parent" android:layout_height="24dp" android:gravity="center_vertical" android:textSize="10sp" android:maxLines="1" android:ellipsize="end" />
+ <LinearLayout android:id="@+id/widgetActions" android:layout_width="match_parent" android:layout_height="40dp" android:paddingTop="4dp" android:orientation="horizontal" android:baselineAligned="false">
+ <TextView android:id="@+id/widgetOpen" style="@style/WidgetAction" android:text="课表" android:contentDescription="打开课表" />
+ <TextView android:id="@+id/widgetAddTask" style="@style/WidgetAction" android:text="＋ 作业" android:contentDescription="添加作业" />
+ <TextView android:id="@+id/widgetAlarms" style="@style/WidgetAction" android:text="提醒" android:contentDescription="打开课程提醒" />
+ </LinearLayout>
+</LinearLayout>

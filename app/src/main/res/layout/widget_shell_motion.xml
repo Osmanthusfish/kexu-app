@@ -1,0 +1,4 @@
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@android:id/background" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/widget_frame" android:clipToOutline="true">
+ <ImageView android:id="@+id/widgetBg" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="@null"/>
+ <ViewFlipper android:id="@+id/widgetSwitcher" android:layout_width="match_parent" android:layout_height="match_parent" android:padding="12dp" android:animateFirstView="false" android:inAnimation="@anim/widget_page_in" android:outAnimation="@anim/widget_page_out"/>
+</FrameLayout>

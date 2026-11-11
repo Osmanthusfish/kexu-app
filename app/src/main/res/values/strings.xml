@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">课序</string>
+    <string name="widget_course_desc">今天全部课程按时间排列，保留已结束课程；支持连续滚动与个性化</string>
+    <string name="widget_course_name">今日时间轴</string>
+    <string name="widget_agenda_name">整周课表</string>
+    <string name="widget_agenda_desc">本周课程按天完整排列，支持重叠课程、切周与回本周；建议使用 4×5 大小</string>
+</resources>

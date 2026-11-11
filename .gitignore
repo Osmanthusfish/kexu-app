@@ -1,0 +1,26 @@
+# Reproducible build output and local Gradle/Kotlin caches
+.gradle/
+.kotlin/
+**/build/
+.idea/
+*.iml
+local.properties
+
+# Local backups of this Git repository
+.local-backups/
+
+# Local credentials and signing material (keep outside version control)
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+key.properties
+keystore.properties
+
+# OS metadata
+Thumbs.db
+.DS_Store

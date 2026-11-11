@@ -1,0 +1,9 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/weekGrid" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:baselineAligned="false">
+ <LinearLayout android:id="@+id/weekDay1" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="2dp" />
+ <LinearLayout android:id="@+id/weekDay2" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="2dp" />
+ <LinearLayout android:id="@+id/weekDay3" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="2dp" />
+ <LinearLayout android:id="@+id/weekDay4" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="2dp" />
+ <LinearLayout android:id="@+id/weekDay5" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="2dp" />
+ <LinearLayout android:id="@+id/weekDay6" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="2dp" />
+ <LinearLayout android:id="@+id/weekDay7" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="2dp" />
+</LinearLayout>
