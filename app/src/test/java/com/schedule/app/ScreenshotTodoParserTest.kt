@@ -87,6 +87,21 @@ class ScreenshotTodoParserTest {
         }
     }
 
+    @Test fun clockWithPeriodUsesThePeriod() {
+        assertEquals("15:00", ScreenshotTodoParser.parse("明天下午 3:00提交作业", today).dueTime)
+        assertEquals("00:30", ScreenshotTodoParser.parse("明天凌晨12:30提交作业", today).dueTime)
+        val invalid = ScreenshotTodoParser.parse("明天下午23:00提交作业", today)
+        assertEquals(null, invalid.dueTime)
+        assertTrue(invalid.ambiguousTimeText != null)
+    }
+
+    @Test fun chineseTimePreservesSingleDigitMinutesAndRejectsInvalidMinutes() {
+        assertEquals("15:05", ScreenshotTodoParser.parse("明天下午3点5分提交作业", today).dueTime)
+        val invalid = ScreenshotTodoParser.parse("明天下午3点99分提交作业", today)
+        assertEquals(null, invalid.dueTime)
+        assertTrue(invalid.ambiguousTimeText != null)
+    }
+
     @Test fun chatSenderAndTimestampDoNotBecomeTheTaskWhenThereIsAnActionLine() {
         val draft = ScreenshotTodoParser.parse("示例同学 09:30\n请于11月20日15:00前提交调查问卷", today)
         assertTrue(draft.title.contains("提交调查问卷"))

@@ -19,8 +19,19 @@ object ScreenshotTodoParser {
     private val iso = Regex("(?<!\\d)(20\\d{2})[-/.年](\\d{1,2})[-/.月](\\d{1,2})日?(?!\\d)")
     private val monthDay = Regex("(?<!\\d)(\\d{1,2})月(\\d{1,2})(?:日|号)?(?!\\d)")
     private val slashMonthDay = Regex("(?<!\\d)(\\d{1,2})/(\\d{1,2})(?!\\d)")
-    private val time24 = Regex("(?<!\\d)([01]?\\d|2[0-3])[:：]([0-5]\\d)(?!\\d)")
-    private val chineseTime = Regex("(上午|下午|晚上|中午)?\\s*(\\d{1,2})\\s*点(?:半|([0-5]\\d)分?)?")
+    private val time24 = Regex("(?<!\\d)(?:(上午|下午|晚上|中午|凌晨)\\s*)?([01]?\\d|2[0-3])[:：]([0-5]\\d)(?!\\d)")
+    private val chineseTime = Regex("(上午|下午|晚上|中午|凌晨)?\\s*(\\d{1,2})\\s*点(?:半|(\\d{1,2})分?)?")
+
+    private fun resolvedHour(hour: Int, period: String, bareIsAmbiguous: Boolean): Int? {
+        if (period.isEmpty()) return hour.takeIf { it in 0..23 && (!bareIsAmbiguous || it !in 1..12) }
+        if (hour !in 1..12) return null
+        if ((period == "中午" && hour != 12) || (period == "晚上" && hour == 12)) return null
+        return when {
+            (period == "下午" || period == "晚上") && hour < 12 -> hour + 12
+            (period == "上午" || period == "凌晨") && hour == 12 -> 0
+            else -> hour
+        }
+    }
 
     fun parse(text: String, today: LocalDate = LocalDate.now()): ScreenshotTodoDraft {
         val normalized = text.replace('０', '0').replace('１', '1').replace('２', '2')
@@ -69,17 +80,14 @@ object ScreenshotTodoParser {
         val chineseMatches = chineseTime.findAll(normalized).toList()
         val multipleTimes = clockMatches.size + chineseMatches.size > 1
         val chineseMatch = chineseMatches.singleOrNull()
-        val time = if (multipleTimes) null else clockMatches.singleOrNull()?.let { "%02d:%02d".format(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }
+        val clockMatch = clockMatches.singleOrNull()
+        val time = if (multipleTimes) null else clockMatch?.let { m ->
+            resolvedHour(m.groupValues[2].toInt(), m.groupValues[1], false)?.let { hour ->
+                "%02d:%02d".format(hour, m.groupValues[3].toInt())
+            }
+        }
             ?: chineseMatch?.let { m ->
-                var hour = m.groupValues[2].toInt()
-                val period = m.groupValues[1]
-                // A bare 1–12 o'clock could mean either morning or afternoon.
-                if (period.isEmpty() && hour in 1..12) return@let null
-                if (period.isNotEmpty() && hour !in 1..12) return@let null
-                // These expressions are used inconsistently, so leave them to the user.
-                if ((period == "中午" && hour != 12) || (period == "晚上" && hour == 12)) return@let null
-                if ((period == "下午" || period == "晚上") && hour < 12) hour += 12
-                if (period == "上午" && hour == 12) hour = 0
+                val hour = resolvedHour(m.groupValues[2].toInt(), m.groupValues[1], true) ?: return@let null
                 val minute = if (m.groupValues[3] == "" && m.value.contains("半")) 30 else m.groupValues[3].toIntOrNull() ?: 0
                 if (hour in 0..23 && minute in 0..59) "%02d:%02d".format(hour, minute) else null
             }
@@ -106,7 +114,7 @@ object ScreenshotTodoParser {
             dueTime = time,
             sourceDateText = selected?.second,
             needsDateConfirmation = selected?.third ?: true,
-            ambiguousTimeText = if (multipleTimes) "识别到多个时间" else chineseMatch?.value?.takeIf { time == null },
+            ambiguousTimeText = if (multipleTimes) "识别到多个时间" else (clockMatch ?: chineseMatch)?.value?.takeIf { time == null },
             recognizedText = text,
             multipleDateMentions = multipleDates
         )
