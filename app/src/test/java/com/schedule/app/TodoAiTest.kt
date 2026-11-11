@@ -39,7 +39,7 @@ class TodoAiTest {
 
     @Test fun `request sends only text to fixed HTTPS endpoint and parses response`() {
         val modelOutput = JSONObject().put("title", "提交示例").put("dueDate", "2026-11-20").put("dueTime", "15:00")
-        val response = JSONObject().put("choices", org.json.JSONArray().put(JSONObject().put("message", JSONObject().put("content", modelOutput.toString())))).toString()
+        val response = JSONObject().put("choices", org.json.JSONArray().put(JSONObject().put("finish_reason", "stop").put("message", JSONObject().put("content", modelOutput.toString())))).toString()
         lateinit var fake: FakeConnection
         val result = TodoAi.organizeWithConnection("示例文字", "synthetic-key", original) { url ->
             assertEquals("https://api.deepseek.com/chat/completions", url.toString())
@@ -51,6 +51,7 @@ class TodoAiTest {
         assertEquals("Bearer synthetic-key", fake.getRequestProperty("Authorization"))
         assertEquals("示例文字", payload.getJSONArray("messages").getJSONObject(1).getString("content"))
         assertEquals("deepseek-flash", payload.getString("model"))
+        assertEquals("disabled", payload.getJSONObject("thinking").getString("type"))
         assertFalse(payload.toString().contains("image_url"))
         assertEquals("提交示例", result.title)
         assertTrue(fake.disconnected)
@@ -64,6 +65,17 @@ class TodoAiTest {
             }.isFailure)
             assertTrue(fake.disconnected)
         }
+    }
+
+    @Test fun `truncated model output is rejected even if it contains valid JSON`() {
+        val partial = JSONObject().put("choices", org.json.JSONArray().put(JSONObject()
+            .put("finish_reason", "length")
+            .put("message", JSONObject().put("content", """{"title":"示例"}""")))).toString()
+        lateinit var fake: FakeConnection
+        assertTrue(runCatching {
+            TodoAi.organizeWithConnection("示例文字", "synthetic-key", original) { FakeConnection(it, 200, partial).also { c -> fake = c } }
+        }.isFailure)
+        assertTrue(fake.disconnected)
     }
 
     private class FakeConnection(url: URL, private val status: Int, private val response: String) : HttpsURLConnection(url) {
