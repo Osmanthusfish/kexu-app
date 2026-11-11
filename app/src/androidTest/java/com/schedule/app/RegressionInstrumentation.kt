@@ -7,11 +7,14 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.graphics.Bitmap
 import android.os.Bundle
+import androidx.activity.compose.setContent
+import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.ViewModelProvider
 import com.schedule.app.data.*
 import com.schedule.app.model.*
 import java.io.File
 import java.util.concurrent.atomic.AtomicReference
+import com.schedule.app.ui.ScreenshotTodoReviewDialog
 
 /** Device regression runner using Android's existing framework, with no additional test dependencies.
  * Refuses to touch the regular app. It preserves a pre-test snapshot inside the isolated app.
@@ -23,8 +26,9 @@ class RegressionInstrumentation : Instrumentation() {
     private var dailyChecks = false
     private var skyOnly = false
     private var ocrOnly = false
+    private var reviewOnly = false
     private var originalBackup: String? = null
-    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; super.onCreate(arguments); start() }
     override fun onStart() {
         try {
             check(targetContext.packageName == "com.schedule.app.review") { "Only the isolated review package may be tested" }
@@ -41,6 +45,24 @@ class RegressionInstrumentation : Instrumentation() {
             })
             startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             await { latest.get() != null && !model().isLoading }
+            if (reviewOnly) {
+                val savedTodo = AtomicReference<Todo?>()
+                val draft = ScreenshotTodoParser.parse("2026年11月20日 15:00 提交示例材料")
+                main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, {}, { savedTodo.set(it) }) } } }
+                await { containsText(uiAutomation.rootInActiveWindow, "确认添加") }
+                check(!isEnabled(uiAutomation.rootInActiveWindow, "确认添加")) { "Draft saved without confirmation" }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认 2026-11-20 是截止日期"))
+                waitForIdleSync()
+                check(!isEnabled(uiAutomation.rootInActiveWindow, "确认添加")) { "Draft saved without confirming its time" }
+                repeat(4) { if (!containsText(uiAutomation.rootInActiveWindow, "确认 15:00 是截止时间")) scrollForward(uiAutomation.rootInActiveWindow) }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认 15:00 是截止时间"))
+                await { isEnabled(uiAutomation.rootInActiveWindow, "确认添加") }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认添加"))
+                await { savedTodo.get() != null }
+                check(savedTodo.get()?.dueDate == "2026-11-20" && savedTodo.get()?.dueTime == "15:00")
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS review requires date and time confirmation\n") })
+                return
+            }
             val ocrImage = File(targetContext.cacheDir, "ocr-synthetic-input.png")
             context.assets.open("screenshot-todo-sample.png").use { input -> ocrImage.outputStream().use(input::copyTo) }
             val ocrText = ScreenshotTodoOcr.recognize(targetContext, android.net.Uri.fromFile(ocrImage))
@@ -494,6 +516,19 @@ class RegressionInstrumentation : Instrumentation() {
         node.refresh()
         if (node.text?.toString()?.contains(text) == true || node.contentDescription?.toString()?.contains(text) == true) return true
         return (0 until node.childCount).any { containsText(node.getChild(it), text) }
+    }
+    private fun isEnabled(node: android.view.accessibility.AccessibilityNodeInfo?, label: String): Boolean {
+        if (node == null) return false
+        if (node.text?.toString() == label) {
+            var ancestor = node
+            while (ancestor != null) {
+                if (!ancestor.isEnabled) return false
+                if (ancestor.isClickable) return true
+                ancestor = ancestor.parent
+            }
+            return false
+        }
+        return (0 until node.childCount).any { isEnabled(node.getChild(it), label) }
     }
     private fun clickLabel(node: android.view.accessibility.AccessibilityNodeInfo?, label: String): Boolean {
         if (node == null) return false

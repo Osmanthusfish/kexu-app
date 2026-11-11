@@ -59,4 +59,18 @@ class ScreenshotTodoParserTest {
         val draft = ScreenshotTodoParser.parse("11月20日开题，11月22日提交", today)
         assertTrue(draft.needsDateConfirmation)
     }
+
+    @Test fun multipleTimesAreNotGuessed() {
+        val draft = ScreenshotTodoParser.parse("消息 09:30\n请在 11月20日 15:00 前提交", today)
+        assertEquals(null, draft.dueTime)
+        assertEquals("识别到多个时间", draft.ambiguousTimeText)
+    }
+
+    @Test fun ambiguousNoonAndMidnightAreNotGuessed() {
+        listOf("中午1点", "晚上12点").forEach { expression ->
+            val draft = ScreenshotTodoParser.parse("明天${expression}交报告", today)
+            assertEquals(null, draft.dueTime)
+            assertTrue(draft.ambiguousTimeText != null)
+        }
+    }
 }

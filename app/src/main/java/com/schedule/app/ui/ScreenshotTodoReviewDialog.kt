@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
@@ -22,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.schedule.app.data.ScreenshotTodoDraft
@@ -56,12 +58,13 @@ fun ScreenshotTodoReviewDialog(
     var dueTime by remember(draft) { mutableStateOf(draft.dueTime.orEmpty()) }
     // An OCR screenshot can contain message timestamps as well as deadlines.
     var dateReviewed by remember(draft) { mutableStateOf(false) }
+    var timeReviewed by remember(draft) { mutableStateOf(false) }
     var noDueDate by remember(draft) { mutableStateOf(false) }
     var skipAmbiguousTime by remember(draft) { mutableStateOf(false) }
     var chooseDate by remember(draft) { mutableStateOf(false) }
     val timeValid = dueTime.isBlank() || runCatching { LocalTime.parse(dueTime) }.isSuccess
-    val timeReviewed = noDueDate || draft.ambiguousTimeText == null || dueTime.isNotBlank() || skipAmbiguousTime
-    val canSave = title.isNotBlank() && timeValid && timeReviewed && (noDueDate || (dueDate != null && dateReviewed))
+    val timeResolved = noDueDate || if (dueTime.isNotBlank()) timeReviewed else draft.ambiguousTimeText == null || skipAmbiguousTime
+    val canSave = title.isNotBlank() && timeValid && timeResolved && (noDueDate || (dueDate != null && dateReviewed))
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -87,8 +90,8 @@ fun ScreenshotTodoReviewDialog(
                     if (dueDate != null) TextButton(onClick = { dueDate = null; dateReviewed = false }) { Text("清除") }
                 }
                 if (dueDate != null && !noDueDate) {
-                    Row {
-                        Checkbox(checked = dateReviewed, onCheckedChange = { dateReviewed = it })
+                    Row(Modifier.fillMaxWidth().toggleable(value = dateReviewed, role = Role.Checkbox, onValueChange = { dateReviewed = it })) {
+                        Checkbox(checked = dateReviewed, onCheckedChange = null)
                         Text("确认 $dueDate 是截止日期", modifier = Modifier.weight(1f))
                     }
                 }
@@ -99,7 +102,13 @@ fun ScreenshotTodoReviewDialog(
                     })
                     Text("这条待办没有截止日期", modifier = Modifier.weight(1f).then(Modifier))
                 }
-                OutlinedTextField(dueTime, { dueTime = it }, label = { Text("截止时间（可选，HH:mm）") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                OutlinedTextField(dueTime, { dueTime = it; timeReviewed = false }, label = { Text("截止时间（可选，HH:mm）") }, modifier = Modifier.fillMaxWidth(), singleLine = true, enabled = !noDueDate)
+                if (dueTime.isNotBlank() && !noDueDate && timeValid) {
+                    Row(Modifier.fillMaxWidth().toggleable(value = timeReviewed, role = Role.Checkbox, onValueChange = { timeReviewed = it })) {
+                        Checkbox(checked = timeReviewed, onCheckedChange = null)
+                        Text("确认 $dueTime 是截止时间", modifier = Modifier.weight(1f))
+                    }
+                }
                 if (draft.ambiguousTimeText != null) Text("时间“${draft.ambiguousTimeText}”不明确，请核对并填写 24 小时制时间。", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 if (draft.ambiguousTimeText != null && dueTime.isBlank() && !noDueDate) {
                     Row {

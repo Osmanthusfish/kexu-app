@@ -62,14 +62,19 @@ object ScreenshotTodoParser {
             // Screenshot capture time is unknown: relative dates must never be treated as certain.
             ?: relative?.let { Triple(it.first, it.second, true) }
             ?: weekday?.let { Triple(it.first, it.second, true) }
-        val chineseMatch = chineseTime.find(normalized)
-        val time = time24.find(normalized)?.let { "%02d:%02d".format(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }
+        val clockMatches = time24.findAll(normalized).toList()
+        val chineseMatches = chineseTime.findAll(normalized).toList()
+        val multipleTimes = clockMatches.size + chineseMatches.size > 1
+        val chineseMatch = chineseMatches.singleOrNull()
+        val time = if (multipleTimes) null else clockMatches.singleOrNull()?.let { "%02d:%02d".format(it.groupValues[1].toInt(), it.groupValues[2].toInt()) }
             ?: chineseMatch?.let { m ->
                 var hour = m.groupValues[2].toInt()
                 val period = m.groupValues[1]
                 // A bare 1–12 o'clock could mean either morning or afternoon.
                 if (period.isEmpty() && hour in 1..12) return@let null
                 if (period.isNotEmpty() && hour !in 1..12) return@let null
+                // These expressions are used inconsistently, so leave them to the user.
+                if ((period == "中午" && hour != 12) || (period == "晚上" && hour == 12)) return@let null
                 if ((period == "下午" || period == "晚上") && hour < 12) hour += 12
                 if (period == "上午" && hour == 12) hour = 0
                 val minute = if (m.groupValues[3] == "" && m.value.contains("半")) 30 else m.groupValues[3].toIntOrNull() ?: 0
@@ -91,7 +96,7 @@ object ScreenshotTodoParser {
             dueTime = time,
             sourceDateText = selected?.second,
             needsDateConfirmation = selected?.third ?: true,
-            ambiguousTimeText = chineseMatch?.value?.takeIf { time == null },
+            ambiguousTimeText = if (multipleTimes) "识别到多个时间" else chineseMatch?.value?.takeIf { time == null },
             recognizedText = text
         )
     }
