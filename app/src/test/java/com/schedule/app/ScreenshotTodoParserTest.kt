@@ -102,6 +102,17 @@ class ScreenshotTodoParserTest {
         assertTrue(invalid.ambiguousTimeText != null)
     }
 
+    @Test fun malformedOrApproximateTimeRequiresReviewInsteadOfBeingDroppedOrRounded() {
+        listOf("25:00", "15:99", "15:3", "下午3点一刻", "下午3点半左右", "15:00左右").forEach { expression ->
+            val draft = ScreenshotTodoParser.parse("明天${expression}提交作业", today)
+            assertEquals(expression, null, draft.dueTime)
+            assertTrue(expression, draft.ambiguousTimeText != null)
+        }
+        val mixed = ScreenshotTodoParser.parse("09:30发布通知，明天25:00提交作业", today)
+        assertEquals(null, mixed.dueTime)
+        assertEquals("识别到多个时间", mixed.ambiguousTimeText)
+    }
+
     @Test fun chatSenderAndTimestampDoNotBecomeTheTaskWhenThereIsAnActionLine() {
         val draft = ScreenshotTodoParser.parse("示例同学 09:30\n请于11月20日15:00前提交调查问卷", today)
         assertTrue(draft.title.contains("提交调查问卷"))

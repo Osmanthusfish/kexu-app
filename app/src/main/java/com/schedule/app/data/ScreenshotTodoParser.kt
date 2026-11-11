@@ -19,7 +19,8 @@ object ScreenshotTodoParser {
     private val iso = Regex("(?<!\\d)(20\\d{2})[-/.年](\\d{1,2})[-/.月](\\d{1,2})日?(?!\\d)")
     private val monthDay = Regex("(?<!\\d)(\\d{1,2})月(\\d{1,2})(?:日|号)?(?!\\d)")
     private val slashMonthDay = Regex("(?<!\\d)(\\d{1,2})/(\\d{1,2})(?!\\d)")
-    private val time24 = Regex("(?<!\\d)(?:(上午|下午|晚上|中午|凌晨)\\s*)?([01]?\\d|2[0-3])[:：]([0-5]\\d)(?!\\d)")
+    // Capture malformed clock expressions too, so they cannot disappear silently.
+    private val time24 = Regex("(?<!\\d)(?:(上午|下午|晚上|中午|凌晨)\\s*)?(\\d{1,2})[:：](\\d+)(?!\\d)")
     private val chineseTime = Regex("(上午|下午|晚上|中午|凌晨)?\\s*(\\d{1,2})\\s*点(?:半|(\\d{1,2})分?)?")
 
     private fun resolvedHour(hour: Int, period: String, bareIsAmbiguous: Boolean): Int? {
@@ -81,9 +82,14 @@ object ScreenshotTodoParser {
         val multipleTimes = clockMatches.size + chineseMatches.size > 1
         val chineseMatch = chineseMatches.singleOrNull()
         val clockMatch = clockMatches.singleOrNull()
-        val time = if (multipleTimes) null else clockMatch?.let { m ->
+        val approximateSuffix = (clockMatch ?: chineseMatch)?.let { m ->
+            Regex("^(?:一刻|三刻|多|左右|前后|许)").find(normalized.substring(m.range.last + 1))?.value
+        }
+        val time = if (multipleTimes || approximateSuffix != null) null else clockMatch?.let { m ->
+            if (m.groupValues[3].length != 2) return@let null
+            val minute = m.groupValues[3].toIntOrNull()?.takeIf { it in 0..59 } ?: return@let null
             resolvedHour(m.groupValues[2].toInt(), m.groupValues[1], false)?.let { hour ->
-                "%02d:%02d".format(hour, m.groupValues[3].toInt())
+                "%02d:%02d".format(hour, minute)
             }
         }
             ?: chineseMatch?.let { m ->
@@ -114,7 +120,8 @@ object ScreenshotTodoParser {
             dueTime = time,
             sourceDateText = selected?.second,
             needsDateConfirmation = selected?.third ?: true,
-            ambiguousTimeText = if (multipleTimes) "识别到多个时间" else (clockMatch ?: chineseMatch)?.value?.takeIf { time == null },
+            ambiguousTimeText = if (multipleTimes) "识别到多个时间" else
+                (clockMatch ?: chineseMatch)?.value?.let { it + approximateSuffix.orEmpty() }?.takeIf { time == null },
             recognizedText = text,
             multipleDateMentions = multipleDates
         )
