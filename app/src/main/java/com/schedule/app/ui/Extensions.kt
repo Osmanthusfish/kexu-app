@@ -1329,6 +1329,23 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
     }
     val snackbar = remember { SnackbarHostState() }
     val actionScope = rememberCoroutineScope()
+    var screenshotDraft by remember { mutableStateOf<com.schedule.app.data.ScreenshotTodoDraft?>(null) }
+    var screenshotError by remember { mutableStateOf<String?>(null) }
+    var readingScreenshot by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    val screenshotPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) actionScope.launch {
+            readingScreenshot = true
+            screenshotError = null
+            try {
+                val recognized = withContext(Dispatchers.IO) { com.schedule.app.data.ScreenshotTodoOcr.recognize(ctx, uri) }
+                if (recognized.isBlank()) screenshotError = "没有识别到文字，请试试更清晰的截图。"
+                else screenshotDraft = com.schedule.app.data.ScreenshotTodoParser.parse(recognized)
+            } catch (_: Exception) {
+                screenshotError = "图片识别失败，请换一张清晰的截图再试。"
+            } finally { readingScreenshot = false }
+        }
+    }
     fun toggle(todo: Todo) {
         vm.setTodoDone(todo.id, !todo.done)
         if (!todo.done) actionScope.launch {
@@ -1344,6 +1361,13 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
             TopAppBar(
                 colors = topBarTransparent(),
                 title = { Text("待办 / 备忘") },
+                actions = {
+                    TextButton(enabled = !readingScreenshot, onClick = { screenshotPicker.launch("image/*") }) {
+                        Icon(Icons.Filled.Image, null, Modifier.size(17.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(if (readingScreenshot) "识别中…" else "截图转待办")
+                    }
+                },
                 navigationIcon = { IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } }
             )
         },
@@ -1395,6 +1419,18 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
         LinkedTodoDialog(todo = editing, vm = vm, initialSemesterId = draftSemesterId, initialCourseId = draftCourseId, onDismiss = { adding = false; editingId = null; draftCourseId = null }) { t ->
             vm.upsertTodo(t)
             adding = false; editingId = null; draftCourseId = null
+        }
+    }
+
+    screenshotError?.let { message ->
+        AlertDialog(onDismissRequest = { screenshotError = null }, title = { Text("截图识别") },
+            text = { Text(message) }, confirmButton = { TextButton(onClick = { screenshotError = null }) { Text("知道了") } })
+    }
+    screenshotDraft?.let { draft ->
+        ScreenshotTodoReviewDialog(draft, onDismiss = { screenshotDraft = null }) { todo ->
+            vm.upsertTodo(todo)
+            screenshotDraft = null
+            actionScope.launch { snackbar.showSnackbar("已添加待办：${todo.title}") }
         }
     }
 }

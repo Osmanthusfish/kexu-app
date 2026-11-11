@@ -22,8 +22,9 @@ class RegressionInstrumentation : Instrumentation() {
     private val screenshotFolder = "qa-screenshots-${System.currentTimeMillis()}"
     private var dailyChecks = false
     private var skyOnly = false
+    private var ocrOnly = false
     private var originalBackup: String? = null
-    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; super.onCreate(arguments); start() }
     override fun onStart() {
         try {
             check(targetContext.packageName == "com.schedule.app.review") { "Only the isolated review package may be tested" }
@@ -40,6 +41,18 @@ class RegressionInstrumentation : Instrumentation() {
             })
             startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             await { latest.get() != null && !model().isLoading }
+            val ocrImage = File(targetContext.cacheDir, "ocr-synthetic-input.png")
+            context.assets.open("screenshot-todo-sample.png").use { input -> ocrImage.outputStream().use(input::copyTo) }
+            val ocrText = ScreenshotTodoOcr.recognize(targetContext, android.net.Uri.fromFile(ocrImage))
+            check(ocrText.contains("实验报告") && ocrText.contains("2026年11月20日") && ocrText.contains("15:00")) {
+                "Offline Chinese OCR missed the synthetic deadline screenshot"
+            }
+            ocrImage.delete()
+            pass("bundled Chinese OCR reads the synthetic task and deadline screenshot locally")
+            if (ocrOnly) {
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\\nPASS local Chinese OCR only\\n") })
+                return
+            }
             val store = Store(targetContext)
             val before = store.load()
             originalBackup = store.dump(before)
