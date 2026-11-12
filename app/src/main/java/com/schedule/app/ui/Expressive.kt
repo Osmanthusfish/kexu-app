@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -79,13 +80,15 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun QuickCreateSheet(vm:AppViewModel,onDismiss:()->Unit) {
+    var choosingTodo by rememberSaveable { mutableStateOf(false) }
     ModalBottomSheet(onDismissRequest=onDismiss,sheetState=rememberModalBottomSheetState(skipPartiallyExpanded=true),containerColor=MaterialTheme.colorScheme.surface,shape=RoundedCornerShape(topStart=32.dp,topEnd=32.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal=22.dp).padding(bottom=28.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text("安排下一件事",fontSize=24.sp,fontWeight=FontWeight.Bold)
-            Text("从这里，开始你的计划。",fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
-            listOf(Triple("记一项作业",Icons.Default.EditNote,"new-todo"),Triple("设置提醒",Icons.Default.NotificationsActive,"new-reminder"),Triple("导入课表",Icons.Default.FileOpen,"import")).forEachIndexed { index,(label,icon,route) ->
+            Text(if(choosingTodo) "新建待办" else "安排下一件事",fontSize=24.sp,fontWeight=FontWeight.Bold)
+            Text(if(choosingTodo) "选择适合你的记录方式" else "从这里，开始你的计划。",fontSize=13.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            val actions = if(choosingTodo) listOf(Triple("手动输入",Icons.Default.EditNote,"new-todo"),Triple("截图转待办",Icons.Default.Image,"screenshot-todo")) else listOf(Triple("新建待办",Icons.Default.EditNote,"choose-todo"),Triple("课程提醒",Icons.Default.NotificationsActive,"new-reminder"),Triple("导入课表",Icons.Default.FileOpen,"import"))
+            actions.forEachIndexed { index,(label,icon,route) ->
                 Reveal(index) {
-                    Surface(onClick={onDismiss();if(route=="import")vm.go(Screen.Import) else vm.openRoute(route)},modifier=Modifier.fillMaxWidth().pressMotion(.96f),shape=RoundedCornerShape(22.dp),color=MaterialTheme.colorScheme.primaryContainer.copy(alpha=.5f)) {
+                    Surface(onClick={if(route=="choose-todo") choosingTodo=true else { onDismiss();if(route=="import")vm.go(Screen.Import) else vm.openRoute(route) }},modifier=Modifier.fillMaxWidth().pressMotion(.96f),shape=RoundedCornerShape(22.dp),color=MaterialTheme.colorScheme.primaryContainer.copy(alpha=.5f)) {
                         Row(Modifier.padding(18.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(14.dp)) {
                             Icon(icon,null,tint=MaterialTheme.colorScheme.primary)
                             Text(label,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
@@ -94,6 +97,7 @@ import java.time.LocalDate
                     }
                 }
             }
+            if(choosingTodo) TextButton(onClick={choosingTodo=false}) { Text("返回") }
         }
     }
 }

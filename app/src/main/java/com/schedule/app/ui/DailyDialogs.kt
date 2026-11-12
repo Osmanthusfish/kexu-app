@@ -208,7 +208,7 @@ fun LinkedTodoDialog(todo: Todo?, vm: AppViewModel, initialSemesterId: String? =
     var title by rememberSaveable { mutableStateOf(todo?.title ?: "") }
     var start by rememberSaveable { mutableStateOf(todo?.startDate) }
     var due by rememberSaveable { mutableStateOf(todo?.dueDate) }
-    var time by rememberSaveable { mutableStateOf(todo?.dueTime ?: "23:59") }
+    var time by rememberSaveable { mutableStateOf(todo?.dueTime ?: if (todo == null) "23:59" else "") }
     var remind by rememberSaveable { mutableStateOf(todo?.remindMinutesBefore != null) }
     var lead by rememberSaveable { mutableStateOf((todo?.remindMinutesBefore ?: 30).toString()) }
     var semId by rememberSaveable { mutableStateOf(todo?.linkedSemesterId ?: initialSemesterId) }
@@ -216,7 +216,7 @@ fun LinkedTodoDialog(todo: Todo?, vm: AppViewModel, initialSemesterId: String? =
     var picker by rememberSaveable { mutableStateOf("") }
     val course = vm.semesters.find { it.id == semId }?.courses?.find { it.id == courseId }
     val valid = title.isNotBlank() && (start == null || due == null || start!! <= due!!) &&
-        (due == null || (Regex("\\d{2}:\\d{2}").matches(time) && runCatching { java.time.LocalTime.parse(time) }.isSuccess)) && (!remind || (due != null && lead.toIntOrNull() in 0..10080))
+        (due == null || time.isBlank() || (Regex("\\d{2}:\\d{2}").matches(time) && runCatching { java.time.LocalTime.parse(time) }.isSuccess)) && (!remind || (due != null && lead.toIntOrNull() in 0..10080))
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val notifications = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(if (todo == null) "新增作业 / 待办" else "编辑作业 / 待办") }, text = {
@@ -239,7 +239,7 @@ fun LinkedTodoDialog(todo: Todo?, vm: AppViewModel, initialSemesterId: String? =
             }
         }
     }, confirmButton = { TextButton(enabled = valid, onClick = { onSave(Todo(todo?.id ?: UUID.randomUUID().toString(), title.trim(), start, due, todo?.done ?: false,
-        semId.takeIf { courseId != null }, courseId, if (due != null) java.time.LocalTime.parse(time).toString() else null, if (remind) lead.toInt() else null)) }) { Text("保存") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } })
+        semId.takeIf { courseId != null }, courseId, if (due != null && time.isNotBlank()) java.time.LocalTime.parse(time).toString() else null, if (remind) lead.toInt() else null)) }) { Text("保存") } }, dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } })
     if (picker == "start" || picker == "due") DatePick({ picker = "" }) { if (picker == "start") start = it else due = it; picker = "" }
     if (picker == "course") AlertDialog(onDismissRequest = { picker = "" }, title = { Text("关联课程") }, text = {
         Column(Modifier.verticalScroll(rememberScrollState())) { vm.semesters.forEach { s ->

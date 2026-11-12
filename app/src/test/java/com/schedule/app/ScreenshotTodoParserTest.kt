@@ -12,7 +12,7 @@ class ScreenshotTodoParserTest {
 
     @Test fun fullDateAndTimeAreConfident() {
         val draft = ScreenshotTodoParser.parse("截止：2026年11月20日下午3点交实验报告", today)
-        assertEquals("实验报告", draft.title)
+        assertEquals("交实验报告", draft.title)
         assertEquals(LocalDate.of(2026, 11, 20), draft.dueDate)
         assertEquals("15:00", draft.dueTime)
         assertFalse(draft.needsDateConfirmation)
@@ -79,6 +79,19 @@ class ScreenshotTodoParserTest {
         assertEquals("识别到多个时间", draft.ambiguousTimeText)
     }
 
+    @Test fun multipleClockSuggestionsRemainUnselected() {
+        val draft = ScreenshotTodoParser.parse("聊天 09:31\n时间：11月18日 下午17: 20\n地点：示例地点", today)
+        assertEquals(null, draft.dueTime)
+        assertEquals(listOf("09:31", "17:20"), draft.timeCandidates)
+        assertEquals("识别到多个时间", draft.ambiguousTimeText)
+    }
+
+    @Test fun rangeSuggestionsDoNotGuessADeadline() {
+        val draft = ScreenshotTodoParser.parse("11月18日中午 12:50-13:30 提交", today)
+        assertEquals(null, draft.dueTime)
+        assertEquals(listOf("12:50", "13:30"), draft.timeCandidates)
+    }
+
     @Test fun ambiguousNoonAndMidnightAreNotGuessed() {
         listOf("中午1点", "晚上12点").forEach { expression ->
             val draft = ScreenshotTodoParser.parse("明天${expression}交报告", today)
@@ -93,6 +106,19 @@ class ScreenshotTodoParserTest {
         val invalid = ScreenshotTodoParser.parse("明天下午23:00提交作业", today)
         assertEquals(null, invalid.dueTime)
         assertTrue(invalid.ambiguousTimeText != null)
+    }
+
+    @Test fun eventHeadingAndSpacedClockRemainUseful() {
+        val draft = ScreenshotTodoParser.parse("【学期学习交流大会】\n时间：11月18日 下午17: 20\n请提前到场签到", today)
+        assertTrue(draft.title.contains("交流大会"))
+        assertEquals("17:20", draft.dueTime)
+        assertTrue(draft.needsDateConfirmation)
+    }
+
+    @Test fun differentDeliveryFormatsAreMarkedForReview() {
+        val draft = ScreenshotTodoParser.parse("提交研究作业\n周一交打印稿，电子稿另行发送", today)
+        assertTrue(draft.title.contains("提交"))
+        assertTrue(draft.multipleDeliveryFormats)
     }
 
     @Test fun chineseTimePreservesSingleDigitMinutesAndRejectsInvalidMinutes() {
@@ -111,6 +137,26 @@ class ScreenshotTodoParserTest {
         val mixed = ScreenshotTodoParser.parse("09:30发布通知，明天25:00提交作业", today)
         assertEquals(null, mixed.dueTime)
         assertEquals("识别到多个时间", mixed.ambiguousTimeText)
+    }
+
+    @Test fun numberedActionsProduceSeparateLocalDrafts() {
+        val text = "事项清单\n1、2026年11月20日15:00提交报告\n2、2026年11月22日18:30填写问卷"
+        val draft = ScreenshotTodoParser.parse(text, today)
+        assertEquals("提交报告", draft.title)
+        assertEquals(LocalDate.of(2026, 11, 20), draft.dueDate)
+        assertEquals("15:00", draft.dueTime)
+        assertEquals(1, draft.additionalItems.size)
+        assertEquals("填写问卷", draft.additionalItems[0].title)
+        assertEquals(LocalDate.of(2026, 11, 22), draft.additionalItems[0].dueDate)
+        assertEquals("18:30", draft.additionalItems[0].dueTime)
+        assertEquals(text, draft.recognizedText)
+    }
+
+    @Test fun longLocalListWarnsInsteadOfQuietlyLosingItems() {
+        val text = (1..16).joinToString("\n") { "$it、提交第${it}项材料" }
+        val draft = ScreenshotTodoParser.parse(text, today)
+        assertEquals(14, draft.additionalItems.size)
+        assertTrue(draft.mayHaveMoreItems)
     }
 
     @Test fun chatSenderAndTimestampDoNotBecomeTheTaskWhenThereIsAnActionLine() {

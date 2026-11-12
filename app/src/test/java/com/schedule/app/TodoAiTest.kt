@@ -50,6 +50,24 @@ class TodoAiTest {
         }
     }
 
+    @Test fun `multiple model tasks keep their own dates and times`() {
+        val result = TodoAi.parseResponse("""{"items":[{"title":"提交报告","dueDate":"2026-11-20","dueTime":"15:00"},{"title":"填写表格","dueDate":"2026-11-22","dueTime":"18:30"}]}""", original)
+        assertEquals("提交报告", result.title)
+        assertEquals(LocalDate.of(2026, 11, 20), result.dueDate)
+        assertEquals("15:00", result.dueTime)
+        assertEquals(1, result.additionalItems.size)
+        assertEquals("填写表格", result.additionalItems[0].title)
+        assertEquals(LocalDate.of(2026, 11, 22), result.additionalItems[0].dueDate)
+        assertEquals("18:30", result.additionalItems[0].dueTime)
+    }
+
+    @Test fun `one invalid or excessive model item fails the entire draft`() {
+        listOf("""{"items":[]}""", """{"items":[{"title":"示例"},{"title":"另一项","dueDate":"2026-02-30"}]}""",
+            "{\"items\":[" + List(16) { "{\"title\":\"示例\"}" }.joinToString(",") + "]}").forEach {
+            assertTrue(runCatching { TodoAi.parseResponse(it, original) }.isFailure)
+        }
+    }
+
     @Test fun `request sends only text to fixed HTTPS endpoint and parses response`() {
         val modelOutput = JSONObject().put("title", "提交示例").put("dueDate", "2026-11-20").put("dueTime", "15:00")
         val response = JSONObject().put("choices", org.json.JSONArray().put(JSONObject().put("finish_reason", "stop").put("message", JSONObject().put("content", modelOutput.toString())))).toString()

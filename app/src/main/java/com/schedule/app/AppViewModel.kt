@@ -80,7 +80,7 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         private set
     fun clearRoute() { pendingRoute = null; saved["route"] = null }
     fun openRoute(entry: String, semesterId: String? = null, courseId: String? = null, date: String? = null, todoId: String? = null, occurrence: String? = null) {
-        if (entry !in setOf("course", "day", "week", "widgets", "new-reminder", "new-todo", "todo", "home", "schedule", "reminders", "todos", "countdown")) return
+        if (entry !in setOf("course", "day", "week", "widgets", "new-reminder", "new-todo", "screenshot-todo", "todo", "home", "schedule", "reminders", "todos", "countdown")) return
         pendingRoute = arrayListOf(entry, semesterId.orEmpty(), courseId.orEmpty(), date.orEmpty(), todoId.orEmpty(), occurrence.orEmpty())
         saved["route"] = pendingRoute
         if (!isLoading) dispatchRoute()
@@ -93,7 +93,7 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
             "widgets" -> { clearRoute(); go(Screen.Widgets) }
             "course" -> if (sem?.courses?.any { it.id == route[2] } == true && Wk.parseDateOrNull(route[3]) != null) go(Screen.Schedule, sem.id) else { clearRoute(); home() }
             "new-reminder" -> go(Screen.Reminders, sem?.id)
-            "new-todo", "todo" -> go(Screen.Todos, sem?.id)
+            "new-todo", "screenshot-todo", "todo" -> go(Screen.Todos, sem?.id)
             else -> { val entry = route[0]; clearRoute(); if (entry == "home") home() else openFromWidget(entry) }
         }
     }
@@ -107,7 +107,7 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
         if (screen != s) stack.add(screen)
         screen = s; saveStack()
     }
-    fun back() { screen = if (stack.isNotEmpty()) stack.removeLast() else Screen.Home; saveStack() }
+    fun back() { screen = if (stack.isNotEmpty()) stack.removeAt(stack.lastIndex) else Screen.Home; saveStack() }
     fun home() { stack.clear(); screen = Screen.Home; saveStack() }
     fun dismissError() { errorMessage = null }
 
@@ -192,17 +192,22 @@ class AppViewModel(app: Application, private val saved: SavedStateHandle) : Andr
     fun upsertCountdown(c: Countdown) = mutate { it.copy(countdowns = it.countdowns.upsert(c) { v -> v.id }) }
     fun deleteCountdown(id: String) = mutate { it.copy(countdowns = it.countdowns.filterNot { c -> c.id == id }) }
     fun upsertTodo(t: Todo) = mutate { it.copy(todos = it.todos.upsert(t) { v -> v.id }) }
-    fun saveScreenshotTodo(t: Todo, source: ScreenshotTodoDraft, onComplete: (Boolean) -> Unit) {
-        if (screenshotTodoSaving) return
+    fun saveScreenshotTodo(t: Todo, source: ScreenshotTodoDraft, onComplete: (Boolean) -> Unit) =
+        saveScreenshotTodos(listOf(t), source, onComplete)
+    fun saveScreenshotTodos(todos: List<Todo>, source: ScreenshotTodoDraft, onComplete: (Boolean) -> Unit) {
+        if (screenshotTodoSaving || todos.isEmpty() || todos.map { it.id }.distinct().size != todos.size) return
         screenshotTodoSaving = true
         transact(onComplete = { success ->
-            // A post-write refresh may fail even though the item was already published.
-            val saved = success || data.todos.any { it.id == t.id }
+            // A post-write refresh can fail after the complete batch was already published.
+            val saved = success || todos.all { t -> data.todos.any { it.id == t.id } }
             if (saved && !success) errorMessage = "待办已保存，但刷新状态时出现问题，请重新打开应用检查。"
             screenshotTodoSaving = false
             if (saved && screenshotTodoDraft == source) screenshotTodoDraft = null
             onComplete(saved)
-        }) { old -> ReminderRules.synchronize(old.copy(todos = old.todos.upsert(t) { v -> v.id })).also { store.save(it) } }
+        }) { old ->
+            val merged = todos.fold(old.todos) { current, todo -> current.upsert(todo) { it.id } }
+            ReminderRules.synchronize(old.copy(todos = merged)).also { store.save(it) }
+        }
     }
     fun deleteTodo(id: String) = mutate { it.copy(todos = it.todos.filterNot { t -> t.id == id }) }
     fun upsertCourseChange(change: CourseChange) = mutate { OccurrenceRules.put(it, change) }

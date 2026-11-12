@@ -2,6 +2,8 @@ package com.schedule.app.ui
 
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
@@ -38,6 +40,12 @@ import com.schedule.app.model.*
     var opacity by remember(vm.data.visual.widgetOpacity) { mutableFloatStateOf(vm.data.visual.widgetOpacity) }
     var pinMessage by remember { mutableStateOf<String?>(null) }
     val ctx=LocalContext.current
+    val wallpaperPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            runCatching { ctx.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            vm.openWidgetWallpaperEdit(uri.toString())
+        }
+    }
     val prefs=vm.data.visual.copy(widgetFontScale=font,widgetOpacity=opacity)
     Scaffold(containerColor=Color.Transparent,topBar={TopAppBar(title={Text("小组件工作室")},colors=topBarTransparent(),navigationIcon={IconButton(onClick={vm.back()}){Icon(Icons.AutoMirrored.Filled.ArrowBack,"返回")}})}) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(horizontal=20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)) {
@@ -85,7 +93,14 @@ import com.schedule.app.model.*
                 Slider(font,{font=it},valueRange=.8f..1.3f,steps=4,onValueChangeFinished={vm.updateVisual { current -> current.copy(widgetFontScale=font) }})
                 Text("背景不透明度 · ${(opacity*100).toInt()}%",style=MaterialTheme.typography.labelLarge)
                 Slider(opacity,{opacity=it},valueRange=.5f..1f,steps=4,onValueChangeFinished={vm.updateVisual { current -> current.copy(widgetOpacity=opacity) }})
-                Text("七套材质用于两个组件。你自己的小组件壁纸可继续在“主题换肤”中设置。",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("七套材质用于两个组件。",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            StudioCard("小组件壁纸") {
+                Text("独立于应用壁纸，可拖动和缩放调整。",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Button(onClick={wallpaperPicker.launch(arrayOf("image/*"))}) { Text("选择壁纸") }
+                    OutlinedButton(onClick={vm.setWidgetBg(null)}) { Text("恢复默认") }
+                }
             }
             StudioCard("显示哪些信息") {
                 StudioSwitch("教室",prefs.widgetShowRoom){vm.updateVisual { current -> current.copy(widgetShowRoom=it) }}

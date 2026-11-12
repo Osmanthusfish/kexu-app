@@ -668,15 +668,6 @@ fun ThemeScreen(vm: com.schedule.app.AppViewModel) {
             vm.openWallpaperEdit(uri.toString())
         }
     }
-    // 小组件壁纸：独立文件，与主界面壁纸互不影响
-    val widgetLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            try {
-                ctx.contentResolver.takePersistableUriPermission(uri, android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            } catch (e: Exception) {}
-            vm.openWidgetWallpaperEdit(uri.toString())
-        }
-    }
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -712,10 +703,6 @@ fun ThemeScreen(vm: com.schedule.app.AppViewModel) {
                     vm.theme, vm.customAccent
                 ) { argb -> vm.setCustomAccent(argb) }
             }
-            Spacer(Modifier.height(16.dp))
-            FilledTonalButton(onClick = { vm.go(Screen.Widgets) }, modifier = Modifier.fillMaxWidth().pressMotion()) { Text("小组件工作室 · 预览与定制") }
-            Spacer(Modifier.height(8.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
             Spacer(Modifier.height(16.dp))
             Text("深色模式", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(10.dp))
@@ -809,19 +796,6 @@ fun ThemeScreen(vm: com.schedule.app.AppViewModel) {
                     Icon(Icons.Filled.Image, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("选择壁纸")
                 }
                 OutlinedButton(onClick = { vm.setBg(null) }) { Text("恢复默认") }
-            }
-            Spacer(Modifier.height(20.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-            Spacer(Modifier.height(16.dp))
-            Text("小组件壁纸", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            Text("桌面小组件的独立壁纸：同样可缩放 / 拖动选取，不影响应用内壁纸", color = Color(0xFF8A90A0), fontSize = 12.sp)
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = { widgetLauncher.launch(arrayOf("image/*")) }) {
-                    Icon(Icons.Filled.Image, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("选择小组件壁纸")
-                }
-                OutlinedButton(onClick = { vm.setWidgetBg(null) }) { Text("恢复默认") }
             }
             Spacer(Modifier.height(40.dp))
         }
@@ -984,7 +958,7 @@ fun WallpaperEditOverlay(
     Box(Modifier.fillMaxSize().background(Color(0xFF101114))) {
         if (widgetAspect == null) {
             // —— 主壁纸：整屏就是目标区域 ——
-            BoxWithConstraints(
+            Box(
                 Modifier.fillMaxSize()
                     .pointerInput(Unit) {
                         detectTransformGestures { _, pan, zoom, _ ->
@@ -1017,7 +991,7 @@ fun WallpaperEditOverlay(
                 )
                 Spacer(Modifier.height(10.dp))
                 if (bmp != null) {
-                    BoxWithConstraints(
+                    Box(
                         Modifier.fillMaxWidth(0.88f).aspectRatio(widgetAspect)
                             .clip(RoundedCornerShape(20.dp))
                             .border(1.5.dp, Color.White.copy(alpha = 0.9f), RoundedCornerShape(20.dp))
@@ -1321,17 +1295,30 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
     val editing = vm.todos.firstOrNull { it.id == editingId }
     var draftSemesterId by rememberSaveable { mutableStateOf<String?>(null) }
     var draftCourseId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showOcrDisclosure by rememberSaveable { mutableStateOf(false) }
+    var disclosureForSelection by rememberSaveable { mutableStateOf(false) }
+    var showAiKey by remember { mutableStateOf(false) }
+    var showCreateMenu by remember { mutableStateOf(false) }
+    val appContext = LocalContext.current.applicationContext
+    val keyStore = remember(appContext) { com.schedule.app.data.TodoAiKeyStore(appContext) }
+    var keyConfigured by remember { mutableStateOf(keyStore.configured()) }
+    val snackbar = remember { SnackbarHostState() }
+    val actionScope = rememberCoroutineScope()
+    val screenshotPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) vm.recognizeScreenshotTodo(uri)
+    }
+    val screenshotPrefs = remember(appContext) { appContext.getSharedPreferences("screenshot_todo_ui", android.content.Context.MODE_PRIVATE) }
+    fun requestScreenshot() {
+        if (vm.readingScreenshot) return
+        if (screenshotPrefs.getBoolean("disclosure_acknowledged", false)) screenshotPicker.launch("image/*")
+        else { disclosureForSelection = true; showOcrDisclosure = true }
+    }
     androidx.compose.runtime.LaunchedEffect(vm.pendingRoute) {
         vm.pendingRoute?.let { route ->
             if (route[0] == "todo") { editingId = route[4]; vm.clearRoute() }
             else if (route[0] == "new-todo") { draftSemesterId = route[1].takeIf { it.isNotBlank() }; draftCourseId = route[2].takeIf { it.isNotBlank() }; adding = true; vm.clearRoute() }
+            else if (route[0] == "screenshot-todo") { vm.clearRoute(); requestScreenshot() }
         }
-    }
-    val snackbar = remember { SnackbarHostState() }
-    val actionScope = rememberCoroutineScope()
-    var showOcrDisclosure by remember { mutableStateOf(false) }
-    val screenshotPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) vm.recognizeScreenshotTodo(uri)
     }
     fun toggle(todo: Todo) {
         vm.setTodoDone(todo.id, !todo.done)
@@ -1348,38 +1335,47 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
             TopAppBar(
                 colors = topBarTransparent(),
                 title = { Text("待办 / 备忘") },
-                actions = {
-                    TextButton(enabled = !vm.readingScreenshot, onClick = { showOcrDisclosure = true }) {
-                        Icon(Icons.Filled.Image, null, Modifier.size(17.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text(if (vm.readingScreenshot) "识别中…" else "截图转待办")
-                    }
-                },
                 navigationIcon = { IconButton(onClick = { vm.back() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") } }
             )
         },
-        floatingActionButton = { FloatingActionButton(onClick = { adding = true },modifier=Modifier.pressMotion(.92f)) { Icon(Icons.Filled.Add, "新增") } }
+        floatingActionButton = {
+            Box {
+                FloatingActionButton(onClick = { showCreateMenu = true }, modifier = Modifier.pressMotion(.92f)) { Icon(Icons.Filled.Add, "新增") }
+                DropdownMenu(expanded = showCreateMenu, onDismissRequest = { showCreateMenu = false }) {
+                    DropdownMenuItem(text = { Text("手动新建待办") }, onClick = { showCreateMenu = false; adding = true })
+                    DropdownMenuItem(text = { Text("截图转待办") }, enabled = !vm.readingScreenshot, onClick = { showCreateMenu = false; requestScreenshot() })
+                }
+            }
+        }
     ) { pad ->
         val pending = vm.todos.filter { !it.done }.sortedWith(compareBy({ it.dueDate ?: "9999" }, { it.dueTime ?: "23:59" }, { it.startDate ?: "0000" }))
         val done = vm.todos.filter { it.done }
-        if (vm.todos.isEmpty()) {
-            Column(Modifier.fillMaxSize().padding(pad).padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center) {
-                Box(
-                    Modifier.size(64.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
-                    contentAlignment = Alignment.Center
-                ) { Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp)) }
-                Spacer(Modifier.height(14.dp))
-                Text("还没有待办", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
-                Spacer(Modifier.height(6.dp))
-                Text("记下要做什么、什么时候做，做完打个勾", color = Color(0xFF8A90A0), fontSize = 13.sp)
+        LazyColumn(Modifier.fillMaxSize().padding(pad),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 100.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            item(key = "screenshot-feature") {
+                ScreenshotTodoFeatureCard(
+                    reading = vm.readingScreenshot,
+                    configured = keyConfigured,
+                    onChoose = { requestScreenshot() },
+                    onKey = { showAiKey = true }
+                )
             }
-        } else {
-            LazyColumn(Modifier.fillMaxSize().padding(pad), contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                item(key="progress") { CompletionMeter(done.size,vm.todos.size) }
-                item(key="gesture-hint") { Text("右滑完成 · 左滑删除 · 点击编辑",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(horizontal=4.dp,vertical=4.dp)) }
+            if (vm.todos.isEmpty()) {
+                item(key = "empty") {
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 42.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Box(Modifier.size(64.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(30.dp))
+                        }
+                        Spacer(Modifier.height(14.dp))
+                        Text("还没有待办", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                        Spacer(Modifier.height(6.dp))
+                        Text("记下要做什么、什么时候做，做完打个勾", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    }
+                }
+            } else {
+                item(key = "progress") { CompletionMeter(done.size, vm.todos.size) }
+                item(key = "gesture-hint") { Text("右滑完成 · 左滑删除 · 点击编辑", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) }
                 if (pending.isNotEmpty()) {
                     item { Text("待完成 (${pending.size})", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = MaterialTheme.colorScheme.primary) }
                     items(pending, key = { it.id }) { t -> TodoRow(t, modifier = Modifier.animateItem(fadeInSpec = androidx.compose.animation.core.tween(motionDuration(180)), fadeOutSpec = androidx.compose.animation.core.tween(motionDuration(140)), placementSpec = androidx.compose.animation.core.tween(motionDuration(300))), courseLabel = t.linkedCourseId?.let { id -> vm.semesters.find { it.id == t.linkedSemesterId }?.courses?.find { it.id == id }?.name ?: "原课程已删除" }, onToggle = { toggle(t) }, onEdit = { editingId = t.id }, onDelete = { delTarget = t }) }
@@ -1409,13 +1405,26 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
         }
     }
 
+    if (showAiKey) ScreenshotTodoAiKeyDialog(
+        onDismiss = { showAiKey = false },
+        onChanged = { keyConfigured = keyStore.configured(); showAiKey = false },
+        onPrivacy = { showAiKey = false; disclosureForSelection = false; showOcrDisclosure = true },
+        onError = { message -> actionScope.launch { snackbar.showSnackbar(message) } }
+    )
+
     if (showOcrDisclosure) {
         AlertDialog(
             onDismissRequest = { showOcrDisclosure = false },
             title = { Text("截图识别与隐私") },
             text = { Text("截图和识别文字在设备上处理，不会由识别组件发送给 Google。Google ML Kit 组件可能联网收集设备、应用和性能等诊断信息。使用在线 AI 整理时会另行征求你的同意。") },
-            confirmButton = { TextButton(onClick = { showOcrDisclosure = false; screenshotPicker.launch("image/*") }) { Text("选择截图") } },
-            dismissButton = { TextButton(onClick = { showOcrDisclosure = false }) { Text("取消") } }
+            confirmButton = { TextButton(onClick = {
+                showOcrDisclosure = false
+                if (disclosureForSelection) {
+                    screenshotPrefs.edit().putBoolean("disclosure_acknowledged", true).apply()
+                    screenshotPicker.launch("image/*")
+                }
+            }) { Text(if (disclosureForSelection) "选择截图" else "知道了") } },
+            dismissButton = { if (disclosureForSelection) TextButton(onClick = { showOcrDisclosure = false }) { Text("取消") } }
         )
     }
     vm.screenshotTodoError?.let { message ->
@@ -1423,10 +1432,33 @@ fun TodoScreen(vm: com.schedule.app.AppViewModel) {
             text = { Text(message) }, confirmButton = { TextButton(onClick = vm::dismissScreenshotTodoError) { Text("知道了") } })
     }
     vm.screenshotTodoDraft?.let { draft ->
-        ScreenshotTodoReviewDialog(draft, onDismiss = { vm.screenshotTodoDraft = null }, onAiDraft = { vm.screenshotTodoDraft = it }, saving = vm.screenshotTodoSaving) { todo ->
+        ScreenshotTodoReviewDialog(draft, onDismiss = { vm.screenshotTodoDraft = null }, onAiDraft = { vm.screenshotTodoDraft = it }, saving = vm.screenshotTodoSaving, semesters = vm.semesters, onKeyChanged = { keyConfigured = keyStore.configured() }, onSaveMany = { todos ->
+            vm.saveScreenshotTodos(todos, draft) { saved ->
+                if (saved) actionScope.launch { snackbar.showSnackbar("已添加 ${todos.size} 条待办") }
+            }
+        }) { todo ->
             vm.saveScreenshotTodo(todo, draft) { saved ->
                 if (saved) actionScope.launch { snackbar.showSnackbar("已添加待办：${todo.title}") }
             }
+        }
+    }
+}
+
+@Composable
+private fun ScreenshotTodoFeatureCard(reading: Boolean, configured: Boolean, onChoose: () -> Unit, onKey: () -> Unit) {
+    Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface.copy(alpha = .9f), modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(start = 6.dp, end = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.weight(1f).clip(RoundedCornerShape(18.dp)).clickable(enabled = !reading, onClick = onChoose).padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Filled.Image, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp))
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(if (reading) "识别中…" else "截图转待办", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                    Text(if (configured) "DeepSeek 已配置" else "本地识别 · 可配置 AI", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            TextButton(onClick = onKey) { Text(if (configured) "管理 API Key" else "设置 API Key", maxLines = 1) }
         }
     }
 }

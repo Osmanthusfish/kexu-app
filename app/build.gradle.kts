@@ -18,7 +18,10 @@ android {
     }
     buildTypes {
         debug {
-            if (providers.gradleProperty("isolatedReview").orNull == "true") {
+            if (providers.gradleProperty("isolatedPrivateReview").orNull == "true") {
+                applicationIdSuffix = ".privateqa"
+                manifestPlaceholders["appLabel"] = "课序·隐私测试"
+            } else if (providers.gradleProperty("isolatedReview").orNull == "true") {
                 applicationIdSuffix = ".review"
                 manifestPlaceholders["appLabel"] = "课序·测试"
             }

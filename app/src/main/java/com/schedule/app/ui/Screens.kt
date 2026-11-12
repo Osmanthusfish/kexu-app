@@ -256,18 +256,16 @@ internal fun NextCountdownCard(vm: com.schedule.app.AppViewModel) {
 internal fun QuickActions(vm: com.schedule.app.AppViewModel) {
     val tiles = listOf(
         Triple("课程闹钟", Icons.Filled.Alarm, Screen.Reminders),
-        Triple("主题换肤", Icons.Filled.Palette, Screen.Theme),
         Triple("倒计时", Icons.Filled.Schedule, Screen.Countdown),
         Triple("数据备份", Icons.Filled.Save, Screen.Backup),
-        Triple("小组件", Icons.Filled.Widgets, Screen.Widgets),
         Triple("导入课表", Icons.Filled.Add, Screen.Import),
     )
-    tiles.chunked(3).forEach { row ->
+    tiles.chunked(2).forEach { row ->
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             row.forEach { (label, icon, screen) ->
                 QuickTile(label, icon, Modifier.weight(1f)) { vm.go(screen) }
             }
-            repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+            repeat(2 - row.size) { Spacer(Modifier.weight(1f)) }
         }
         Spacer(Modifier.height(10.dp))
     }

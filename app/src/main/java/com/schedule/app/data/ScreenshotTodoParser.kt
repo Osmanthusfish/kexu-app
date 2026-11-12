@@ -3,6 +3,13 @@ package com.schedule.app.data
 import java.time.DayOfWeek
 import java.time.LocalDate
 
+data class ScreenshotTodoItem(
+    val title: String,
+    val dueDate: LocalDate?,
+    val dueTime: String?,
+    val ambiguousTimeText: String? = null
+)
+
 data class ScreenshotTodoDraft(
     val title: String,
     val dueDate: LocalDate?,
@@ -11,20 +18,25 @@ data class ScreenshotTodoDraft(
     val needsDateConfirmation: Boolean,
     val ambiguousTimeText: String?,
     val recognizedText: String,
-    val multipleDateMentions: Boolean = false
+    val multipleDateMentions: Boolean = false,
+    val multipleDeliveryFormats: Boolean = false,
+    val timeCandidates: List<String> = emptyList(),
+    val additionalItems: List<ScreenshotTodoItem> = emptyList(),
+    val mayHaveMoreItems: Boolean = false
 )
 
 /** Conservative text extraction: a date inferred from an incomplete expression must be confirmed. */
 object ScreenshotTodoParser {
-    private val iso = Regex("(?<!\\d)(20\\d{2})[-/.年](\\d{1,2})[-/.月](\\d{1,2})日?(?!\\d)")
-    private val monthDay = Regex("(?<!\\d)(\\d{1,2})月(\\d{1,2})(?:日|号)?(?!\\d)")
+    private val iso = Regex("(?<!\\d)(20\\d{2})[-/.年](\\d{1,2})[-/.月](\\d{1,2})(?!\\d)日?")
+    private val monthDay = Regex("(?<!\\d)(\\d{1,2})月(\\d{1,2})(?!\\d)(?:日|号)?")
     private val slashMonthDay = Regex("(?<!\\d)(\\d{1,2})/(\\d{1,2})(?!\\d)")
     // Capture malformed clock expressions too, so they cannot disappear silently.
-    private val time24 = Regex("(?<!\\d)(?:(上午|下午|晚上|中午|凌晨)\\s*)?(\\d{1,2})[:：](\\d+)(?!\\d)")
+    private val time24 = Regex("(?<!\\d)(?:(上午|下午|晚上|中午|凌晨)\\s*)?(\\d{1,2})\\s*[:：]\\s*(\\d+)(?!\\d)")
     private val chineseTime = Regex("(上午|下午|晚上|中午|凌晨)?\\s*(\\d{1,2})\\s*点(?:半|(\\d{1,2})分?)?")
 
     private fun resolvedHour(hour: Int, period: String, bareIsAmbiguous: Boolean): Int? {
         if (period.isEmpty()) return hour.takeIf { it in 0..23 && (!bareIsAmbiguous || it !in 1..12) }
+        if ((period == "下午" && hour in 13..18) || (period == "晚上" && hour in 18..23)) return hour
         if (hour !in 1..12) return null
         if ((period == "中午" && hour != 12) || (period == "晚上" && hour == 12)) return null
         return when {
@@ -80,28 +92,39 @@ object ScreenshotTodoParser {
         val clockMatches = time24.findAll(normalized).toList()
         val chineseMatches = chineseTime.findAll(normalized).toList()
         val multipleTimes = clockMatches.size + chineseMatches.size > 1
+        fun clockValue(m: MatchResult): String? {
+            if (m.groupValues[3].length != 2) return null
+            val minute = m.groupValues[3].toIntOrNull()?.takeIf { it in 0..59 } ?: return null
+            val hour = resolvedHour(m.groupValues[2].toInt(), m.groupValues[1], false) ?: return null
+            return "%02d:%02d".format(hour, minute)
+        }
+        fun chineseValue(m: MatchResult): String? {
+            val hour = resolvedHour(m.groupValues[2].toInt(), m.groupValues[1], true) ?: return null
+            val minute = if (m.groupValues[3].isEmpty() && m.value.contains("半")) 30 else m.groupValues[3].toIntOrNull() ?: 0
+            return if (minute in 0..59) "%02d:%02d".format(hour, minute) else null
+        }
+        // Suggestions are never selected automatically and can include capture times or range boundaries.
+        val timeCandidates = (clockMatches.mapNotNull(::clockValue) + chineseMatches.mapNotNull(::chineseValue)).distinct().take(8)
         val chineseMatch = chineseMatches.singleOrNull()
         val clockMatch = clockMatches.singleOrNull()
         val approximateSuffix = (clockMatch ?: chineseMatch)?.let { m ->
             Regex("^(?:一刻|三刻|多|左右|前后|许)").find(normalized.substring(m.range.last + 1))?.value
         }
-        val time = if (multipleTimes || approximateSuffix != null) null else clockMatch?.let { m ->
-            if (m.groupValues[3].length != 2) return@let null
-            val minute = m.groupValues[3].toIntOrNull()?.takeIf { it in 0..59 } ?: return@let null
-            resolvedHour(m.groupValues[2].toInt(), m.groupValues[1], false)?.let { hour ->
-                "%02d:%02d".format(hour, minute)
-            }
-        }
-            ?: chineseMatch?.let { m ->
-                val hour = resolvedHour(m.groupValues[2].toInt(), m.groupValues[1], true) ?: return@let null
-                val minute = if (m.groupValues[3] == "" && m.value.contains("半")) 30 else m.groupValues[3].toIntOrNull() ?: 0
-                if (hour in 0..23 && minute in 0..59) "%02d:%02d".format(hour, minute) else null
-            }
+        val time = if (multipleTimes || approximateSuffix != null) null
+            else clockMatch?.let(::clockValue) ?: chineseMatch?.let(::chineseValue)
 
         // Chat screenshots commonly start with a sender or message timestamp, not the task.
         // Prefer a line containing an action; the result remains editable and is never auto-saved.
         val actionWords = Regex("提交|上交|完成|填写|报名|参加|缴费|交付|领取|发送|上传|下载|准备|携带|截止|作业|任务|报告|问卷|申请")
-        val candidateLine = normalized.lineSequence().map(String::trim).filter { it.isNotBlank() }
+        val compact = normalized.replace(Regex("\\s+"), "")
+        val multipleDeliveryFormats = Regex("打印稿|纸质稿|纸质版").containsMatchIn(compact) &&
+            Regex("电子稿|电子版").containsMatchIn(compact)
+        val lines = normalized.lineSequence().map(String::trim).filter { it.isNotBlank() }.toList()
+        val eventHeading = lines.firstOrNull { line ->
+            line.length <= 65 && Regex("大会|会议|讲座|培训").containsMatchIn(line) &&
+                !Regex("请|须|需要|提前|签到|到场").containsMatchIn(line)
+        }
+        val candidateLine = eventHeading ?: (if (multipleDeliveryFormats) "提交纸质稿和电子稿" else null) ?: lines
             .maxByOrNull { line ->
                 val actions = actionWords.findAll(line).count().coerceAtMost(3)
                 actions * 10 + (if (line.length >= 6) 1 else 0)
@@ -110,11 +133,10 @@ object ScreenshotTodoParser {
             .replace(iso, " ").replace(monthDay, " ").replace(slashMonthDay, " ")
             .replace(time24, " ").replace(chineseTime, " ")
             .replace(Regex("(?:大后天|后天|明天|今天|下周[一二三四五六日天]|下星期[一二三四五六日天]|周[一二三四五六日天]|星期[一二三四五六日天])"), " ")
-            .replace(Regex("^(截止日期|截止时间|截止|交|提交|上交|完成|作业|待办)\\s*[:：]?\\s*"), "")
-            .replace(Regex("^(交|提交|上交|完成|截止)\\s*"), "")
+            .replace(Regex("^(截止日期|截止时间|截止|作业|待办)\\s*[:：]?\\s*"), "")
             .replace(Regex("\\s+"), " ").trim(' ', '，', ',', '。', ';', '；', '、', ':', '：')
 
-        return ScreenshotTodoDraft(
+        val primary = ScreenshotTodoDraft(
             title = title.ifBlank { candidateLine.take(80) },
             dueDate = selected?.first,
             dueTime = time,
@@ -123,7 +145,21 @@ object ScreenshotTodoParser {
             ambiguousTimeText = if (multipleTimes) "识别到多个时间" else
                 (clockMatch ?: chineseMatch)?.value?.let { it + approximateSuffix.orEmpty() }?.takeIf { time == null },
             recognizedText = text,
-            multipleDateMentions = multipleDates
+            multipleDateMentions = multipleDates,
+            multipleDeliveryFormats = multipleDeliveryFormats,
+            timeCandidates = timeCandidates
         )
+        // Split only explicit numbered action lines. Unstructured text remains a single editable draft.
+        val numbered = Regex("^\\s*(?:[0-9]{1,2}[.、）)]|[一二三四五六七八九十][、.）)])\\s*")
+        val numberedActions = lines.mapNotNull { line ->
+            numbered.find(line)?.let { line.substring(it.range.last + 1).trim() }
+                ?.takeIf { it.length >= 4 && actionWords.containsMatchIn(it) }
+        }
+        if (numberedActions.size < 2) return primary
+        val items = numberedActions.take(15).map { line -> parse(line, today) }
+        val first = items.first()
+        return first.copy(recognizedText = text, additionalItems = items.drop(1).map {
+            ScreenshotTodoItem(it.title, it.dueDate, it.dueTime, it.ambiguousTimeText)
+        }, mayHaveMoreItems = numberedActions.size > 15)
     }
 }

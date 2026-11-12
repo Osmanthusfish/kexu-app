@@ -42,7 +42,7 @@ internal object FullWidgetRenderer {
         val metrics=context.resources.displayMetrics
         val paint=TextPaint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { textSize=TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP,font,metrics);typeface=Typeface.create("sans-serif",Typeface.NORMAL) }
         val builder=StaticLayout.Builder.obtain(text,0,text.length,paint,(widthDp*metrics.density).toInt().coerceAtLeast(1))
-            .setIncludePad(false).setBreakStrategy(Layout.BREAK_STRATEGY_SIMPLE)
+            .setIncludePad(false).setBreakStrategy(android.graphics.text.LineBreaker.BREAK_STRATEGY_SIMPLE)
         if(Build.VERSION.SDK_INT>=28)builder.setUseLineSpacingFromFallbacks(true)
         return ceil(builder.build().height/metrics.density)+2f
     }

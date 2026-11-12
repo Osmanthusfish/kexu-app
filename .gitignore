@@ -24,3 +24,7 @@ keystore.properties
 # OS metadata
 Thumbs.db
 .DS_Store
+
+# Local development handoff and emulator screenshot
+/HANDOFF.md
+/ocr-test-screen.png

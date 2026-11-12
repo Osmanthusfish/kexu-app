@@ -17,7 +17,7 @@
 
 支持 Android 8.0（API 26）及以上。[点击下载课序 APK](https://github.com/Osmanthusfish/kexu-app/releases/download/v1.48/kexu-1.48.apk)；源码 ZIP 不能直接安装。
 
-截图转待办是此开发分支新增的功能，上述已发布的 v1.48 APK 尚不包含它。
+当前源码包含截图转待办功能；上述已发布的 v1.48 APK 尚不包含它。
 
 安装更新前建议导出并妥善保存数据。若提示签名不兼容，请先备份数据，避免直接卸载原应用。
 
@@ -78,7 +78,7 @@ Kexu is an Android timetable app built with Kotlin and Jetpack Compose. It suppo
 
 Requires Android 8.0 (API 26) or later. [Download the Kexu APK](https://github.com/Osmanthusfish/kexu-app/releases/download/v1.48/kexu-1.48.apk). The source ZIP is not an installable APK.
 
-Screenshot to task is new to this development branch and is not included in the released v1.48 APK linked above.
+The current source includes screenshot-to-task functionality, which is not included in the released v1.48 APK linked above.
 
 Export and safely store your data before installing an update. If signatures are incompatible, back up your data before considering any uninstall.
 

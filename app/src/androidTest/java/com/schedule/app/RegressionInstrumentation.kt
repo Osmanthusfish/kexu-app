@@ -36,11 +36,39 @@ class RegressionInstrumentation : Instrumentation() {
     private var skipWidgetContent = false
     private var pickerOnly = false
     private var saveFailureOnly = false
+    private var batchOnly = false
+    private var optionsOnly = false
+    private var settingsOnly = false
+    private var lintFixesOnly = false
+    private var autoOfferOnly = false
+    private var entryOnly = false
+    private var privateOcrOnly = false
+    private var expectedPrivateClock: String? = null
+    private var expectedPrivateDate: String? = null
     private var originalBackup: String? = null
-    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; rotationOnly = arguments?.getString("rotation_only") == "true"; ocrRotationOnly = arguments?.getString("ocr_rotation_only") == "true"; aiRotationOnly = arguments?.getString("ai_rotation_only") == "true"; skipWidgetMatrix = arguments?.getString("skip_widget_matrix") == "true"; skipWidgetContent = arguments?.getString("skip_widget_content") == "true"; pickerOnly = arguments?.getString("picker_only") == "true"; saveFailureOnly = arguments?.getString("save_failure_only") == "true"; super.onCreate(arguments); start() }
+    override fun onCreate(arguments: Bundle?) { dailyChecks = arguments?.getString("daily") == "true"; skyOnly = arguments?.getString("sky_only") == "true"; ocrOnly = arguments?.getString("ocr_only") == "true"; reviewOnly = arguments?.getString("review_only") == "true"; aiReviewOnly = arguments?.getString("ai_review_only") == "true"; rotationOnly = arguments?.getString("rotation_only") == "true"; ocrRotationOnly = arguments?.getString("ocr_rotation_only") == "true"; aiRotationOnly = arguments?.getString("ai_rotation_only") == "true"; skipWidgetMatrix = arguments?.getString("skip_widget_matrix") == "true"; skipWidgetContent = arguments?.getString("skip_widget_content") == "true"; pickerOnly = arguments?.getString("picker_only") == "true"; saveFailureOnly = arguments?.getString("save_failure_only") == "true"; batchOnly = arguments?.getString("batch_only") == "true"; optionsOnly = arguments?.getString("options_only") == "true"; settingsOnly = arguments?.getString("settings_only") == "true"; lintFixesOnly = arguments?.getString("lint_fixes_only") == "true"; autoOfferOnly = arguments?.getString("auto_offer_only") == "true"; entryOnly = arguments?.getString("entry_only") == "true"; privateOcrOnly = arguments?.getString("private_ocr_only") == "true"; expectedPrivateClock = arguments?.getString("expected_clock"); expectedPrivateDate = arguments?.getString("expected_date"); super.onCreate(arguments); start() }
     override fun onStart() {
         try {
-            check(targetContext.packageName == "com.schedule.app.review") { "Only the isolated review package may be tested" }
+            check(targetContext.packageName == "com.schedule.app.review" || targetContext.packageName == "com.schedule.app.privateqa") { "Only isolated review packages may be tested" }
+            check(!privateOcrOnly || targetContext.packageName == "com.schedule.app.privateqa") { "Private images require the dedicated isolated package" }
+            if (privateOcrOnly) {
+                // Do not log, persist, or send the private image, OCR text, or generated title.
+                val input = File(targetContext.cacheDir, "private-ocr-input.jpg")
+                val text = ScreenshotTodoOcr.recognize(targetContext, android.net.Uri.fromFile(input))
+                val draft = ScreenshotTodoParser.parse(text)
+                val summary = "characters=${text.length}, titlePresent=${draft.title.isNotBlank()}, " +
+                    "titleHasEvent=${Regex("会议|大会|讲座|活动|通知").containsMatchIn(draft.title)}, " +
+                    "titleHasTask=${Regex("提交|上交|签到|到场|完成|报告|作业|论文").containsMatchIn(draft.title)}, " +
+                    "datePresent=${draft.dueDate != null}, multipleDates=${draft.multipleDateMentions}, " +
+                    "timePresent=${draft.dueTime != null}, timeNeedsReview=${draft.ambiguousTimeText != null}, " +
+                    "expectedClockFound=${expectedPrivateClock?.let { it in draft.timeCandidates }}, " +
+                    "expectedDateFound=${expectedPrivateDate?.let { it == draft.dueDate?.toString() }}, " +
+                    "multipleDeliveryFormats=${draft.multipleDeliveryFormats}, " +
+                    "hasPrinted=${Regex("打印稿|纸质稿|纸质版").containsMatchIn(text.replace(Regex("\\s+"), ""))}, " +
+                    "hasDigital=${Regex("电子稿|电子版").containsMatchIn(text.replace(Regex("\\s+"), ""))}"
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPrivate OCR summary: $summary\n") })
+                return
+            }
             sendStatus(0, Bundle().apply { putString("stream", "Screenshots: files/$screenshotFolder\n") })
             val application = targetContext.applicationContext as Application
             application.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
@@ -54,6 +82,254 @@ class RegressionInstrumentation : Instrumentation() {
             })
             startActivitySync(Intent(targetContext, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             await { latest.get() != null && !model().isLoading }
+            if (lintFixesOnly) {
+                check(targetContext.packageName == "com.schedule.app.privateqa")
+                check(targetContext.checkSelfPermission(android.Manifest.permission.VIBRATE) == android.content.pm.PackageManager.PERMISSION_GRANTED)
+                val vibrator = targetContext.getSystemService(android.os.Vibrator::class.java)
+                vibrator?.vibrate(android.os.VibrationEffect.createOneShot(30, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+                vibrator?.cancel()
+                main { model().home(); model().go(Screen.Todos); model().go(Screen.Theme); model().back() }
+                check(model().screen == Screen.Todos)
+                main { model().back() }
+                check(model().screen == Screen.Home)
+                main { model().back() }
+                check(model().screen == Screen.Home)
+                pass("vibration permission granted; back navigation preserves stack order")
+                val today = java.time.LocalDate.now()
+                val monday = Wk.mondayOf(today)
+                val sample = Semester("lint-sem", "示例学期", monday.toString(), listOf(Course("lint-course", "一门名称较长的示例课程", "", "示例教师", "示例教室", today.dayOfWeek.value, 1, 2, "1-16")))
+                val data = model().data.copy(semesters = listOf(sample), homeSemesterId = sample.id)
+                val state = WidgetBrowseState(monday, 0)
+                main {
+                    for (weekly in listOf(false, true)) {
+                        val content = FullWidgetRenderer.content(targetContext, data, weekly, android.util.SizeF(332f, 303f), state)
+                        check(content.occurrences.size == 1 && content.rows.isNotEmpty() && content.fontSp > 0f)
+                    }
+                }
+                pass("today and weekly widgets render a long synthetic course")
+                val file = File(targetContext.cacheDir, "synthetic-wallpaper-test.png")
+                Bitmap.createBitmap(80, 80, Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.CYAN); file.outputStream().use { compress(Bitmap.CompressFormat.PNG, 100, it) }; recycle() }
+                try {
+                    for (aspect in listOf<Float?>(null, 2f)) {
+                        val result = AtomicReference<Triple<Float, Float, Float>?>()
+                        main { latest.get().setContent { MaterialTheme { com.schedule.app.ui.WallpaperEditOverlay(android.net.Uri.fromFile(file).toString(), aspect, {}, { scale, x, y -> result.set(Triple(scale, x, y)) }) } } }
+                        val button = if (aspect == null) "以此部分为壁纸" else "设为小组件壁纸"
+                        await { isEnabled(uiAutomation.rootInActiveWindow, button) }
+                        val metrics = targetContext.resources.displayMetrics
+                        val x = metrics.widthPixels / 2f; val y = metrics.heightPixels / 2f
+                        val down = android.os.SystemClock.uptimeMillis()
+                        sendPointerSync(android.view.MotionEvent.obtain(down, down, android.view.MotionEvent.ACTION_DOWN, x, y, 0))
+                        sendPointerSync(android.view.MotionEvent.obtain(down, down + 100, android.view.MotionEvent.ACTION_MOVE, x, y - 70f, 0))
+                        sendPointerSync(android.view.MotionEvent.obtain(down, down + 120, android.view.MotionEvent.ACTION_UP, x, y - 70f, 0))
+                        waitForIdleSync()
+                        check(clickLabel(uiAutomation.rootInActiveWindow, button))
+                        await { result.get() != null }
+                        check(result.get()!!.third != 0f) { "Wallpaper drag did not update offset for aspect $aspect" }
+                    }
+                    pass("application and widget wallpaper previews retain drag and confirm")
+                } finally { file.delete() }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS lint fixes regression\n") })
+                return
+            }
+            if (settingsOnly) {
+                check(targetContext.packageName == "com.schedule.app.privateqa")
+                main { model().go(Screen.Widgets) }
+                await { containsText(uiAutomation.rootInActiveWindow, "小组件工作室") }
+                await { val root = uiAutomation.rootInActiveWindow; if (containsText(root, "小组件壁纸")) true else { scrollForward(root); false } }
+                check(containsText(uiAutomation.rootInActiveWindow, "选择壁纸"))
+                main { model().go(Screen.Theme) }
+                await { containsText(uiAutomation.rootInActiveWindow, "主题换肤") }
+                await { val root = uiAutomation.rootInActiveWindow; if (containsText(root, "自定义壁纸")) true else { scrollForward(root); false } }
+                check(!containsText(uiAutomation.rootInActiveWindow, "小组件壁纸"))
+                pass("widget wallpaper is in widget studio and app wallpaper remains in theme")
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS settings organization\n") })
+                return
+            }
+            if (optionsOnly) {
+                check(targetContext.packageName == "com.schedule.app.privateqa")
+                val sample = Semester("sem-synthetic", "示例学期", "2026-09-07", listOf(Course("course-synthetic", "示例课程", "", "", "", 1, 1, 2, "1-16")))
+                val draft = ScreenshotTodoParser.parse("1、2026年11月20日15:00提交报告\n2、2026年11月22日18:30填写问卷")
+                val savedItems = AtomicReference<List<Todo>?>()
+                main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, {}, semesters = listOf(sample), onSaveMany = { savedItems.set(it) }, onSave = {}) } } }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "批量设置课程与提醒") }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "关联课程（可选）") }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "示例课程") }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "未设置提醒") }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "提前 30 分钟") }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "将课程与提醒应用到已选项") }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "收起批量设置") }
+                await { val root = uiAutomation.rootInActiveWindow; if (clickLabel(root, "已核对第 1 项内容与日期时间")) true else { swipeUpSmall(); false } }
+                repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "已核对第 2 项内容与日期时间")) scrollForward(uiAutomation.rootInActiveWindow) }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "已核对第 2 项内容与日期时间") }
+                await { isEnabled(uiAutomation.rootInActiveWindow, "添加 2 项") }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "添加 2 项"))
+                await { savedItems.get() != null }
+                check(savedItems.get()!!.size == 2 && savedItems.get()!!.all { it.linkedSemesterId == sample.id && it.linkedCourseId == "course-synthetic" && it.remindMinutesBefore == 30 })
+                pass("batch course and reminder apply to both reviewed todos")
+                val one = ScreenshotTodoParser.parse("2026年11月20日15:00提交报告")
+                val savedOne = AtomicReference<Todo?>()
+                main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(one, {}, {}, semesters = listOf(sample), onSave = { savedOne.set(it) }) } } }
+                await { containsText(uiAutomation.rootInActiveWindow, "确认 2026-11-20 是截止日期") }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认 2026-11-20 是截止日期"))
+                await { val root = uiAutomation.rootInActiveWindow; if (clickLabel(root, "确认 15:00 是截止时间")) true else { swipeUpSmall(); false } }
+                await { val root = uiAutomation.rootInActiveWindow; if (clickLabel(root, "课程与提醒 · 未设置提醒")) true else { swipeUpSmall(); false } }
+                await { val root = uiAutomation.rootInActiveWindow; if (clickLabel(root, "关联课程（可选）")) true else { swipeUpSmall(); false } }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "示例课程") }
+                await { val root = uiAutomation.rootInActiveWindow; if (clickLabel(root, "未设置提醒")) true else { swipeUpSmall(); false } }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "提前 10 分钟") }
+                await { isEnabled(uiAutomation.rootInActiveWindow, "确认添加") }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认添加"))
+                await { savedOne.get() != null }
+                check(savedOne.get()!!.linkedCourseId == "course-synthetic" && savedOne.get()!!.remindMinutesBefore == 10)
+                pass("single screenshot todo saves chosen course and reminder")
+                val editedOptions = AtomicReference<com.schedule.app.ui.ScreenshotTodoOptions?>()
+                main { latest.get().setContent { MaterialTheme { com.schedule.app.ui.ScreenshotTodoOptionFields(com.schedule.app.ui.ScreenshotTodoOptions(sample.id, "course-synthetic", 30), listOf(sample), true, true) { editedOptions.set(it) } } } }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "提前 30 分钟提醒") }
+                await { clickLabel(uiAutomation.rootInActiveWindow, "提前 10 分钟") }
+                await { editedOptions.get() != null }
+                check(editedOptions.get()!!.courseId == "course-synthetic" && editedOptions.get()!!.remindMinutes == 10)
+                pass("individual reminder can be changed without losing the course")
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS screenshot options\n") })
+                return
+            }
+            if (batchOnly) {
+                check(targetContext.packageName == "com.schedule.app.privateqa")
+                saved()
+                val store = Store(targetContext)
+                val before = store.load()
+                val original = store.dump(before)
+                val draft = ScreenshotTodoParser.parse("1、2026年11月20日15:00提交报告\n2、2026年11月22日18:30填写问卷")
+                check(draft.additionalItems.size == 1)
+                val result = AtomicReference<Boolean?>()
+                var mayHaveWritten = false
+                try {
+                    main { model().go(Screen.Todos); model().screenshotTodoDraft = draft }
+                    await { containsText(uiAutomation.rootInActiveWindow, "核对待办") }
+                    check(!isEnabled(uiAutomation.rootInActiveWindow, "添加 2 项"))
+                    val invalid = listOf(Todo("batch-a", "示例一", null, "2026-11-20", false, dueTime = "15:00"), Todo("batch-b", "示例二", null, "2026-11-22", false, dueTime = "25:00"))
+                    main { model().saveScreenshotTodos(invalid, draft) { result.set(it) } }
+                    await { result.get() != null }; saved()
+                    check(result.get() == false && store.load() == before && model().screenshotTodoDraft == draft)
+                    main { model().dismissError() }
+                    await { containsText(uiAutomation.rootInActiveWindow, "核对待办") }
+                    check(setFirstEditableText(uiAutomation.rootInActiveWindow, "已修改的报告"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "已修改的报告") }
+                    val oldActivity = latest.get()
+                    main { latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                    await { latest.get() !== oldActivity && containsText(uiAutomation.rootInActiveWindow, "已修改的报告") }
+                    val rotatedActivity = latest.get()
+                    main { latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT }
+                    await { latest.get() !== rotatedActivity && containsText(uiAutomation.rootInActiveWindow, "已修改的报告") }
+                    repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "已核对第 1 项内容与日期时间")) scrollForward(uiAutomation.rootInActiveWindow) }
+                    await { clickLabel(uiAutomation.rootInActiveWindow, "已核对第 1 项内容与日期时间") }
+                    check(!isEnabled(uiAutomation.rootInActiveWindow, "添加 2 项"))
+                    repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "18:30")) scrollForward(uiAutomation.rootInActiveWindow) }
+                    await { setEditableTextMatching(uiAutomation.rootInActiveWindow, "18:30", "19:00") }
+                    repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "已核对第 2 项内容与日期时间")) scrollForward(uiAutomation.rootInActiveWindow) }
+                    await { clickLabel(uiAutomation.rootInActiveWindow, "已核对第 2 项内容与日期时间") }
+                    await { isEnabled(uiAutomation.rootInActiveWindow, "添加 2 项") }
+                    capture("batch-review")
+                    mayHaveWritten = true
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "添加 2 项"))
+                    saved()
+                    await { model().screenshotTodoDraft == null }
+                    val savedItems = store.load().todos
+                    check(savedItems.any { it.title == "已修改的报告" && it.dueDate == "2026-11-20" && it.dueTime == "15:00" })
+                    check(savedItems.any { it.title.contains("填写问卷") && it.dueDate == "2026-11-22" && it.dueTime == "19:00" })
+                    pass("batch failure saves nothing; reviewed edits save together with distinct dates and times")
+                } finally {
+                    main { model().screenshotTodoDraft = null; model().dismissError(); latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED; if (mayHaveWritten) model().importJson(original) }
+                    if (mayHaveWritten) { saved(); check(store.load() == before) }
+                }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS multi-todo review and atomic save\n") })
+                return
+            }
+            if (autoOfferOnly) {
+                check(targetContext.packageName == "com.schedule.app.privateqa")
+                val keyStore = TodoAiKeyStore(targetContext)
+                check(!keyStore.configured()) { "Refusing to overwrite a configured AI key" }
+                try {
+                    keyStore.save("synthetic-test-key")
+                    val draft = ScreenshotTodoParser.parse("2026年11月20日 15:00 提交示例材料")
+                    main { model().go(Screen.Todos); model().screenshotTodoDraft = draft }
+                    await { containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
+                    val oldActivity = latest.get()
+                    main { latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
+                    await { latest.get() !== oldActivity && containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "取消"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    Thread.sleep(500)
+                    check(!containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？"))
+                    main { model().screenshotTodoDraft = null }
+                    await { !containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    main { model().screenshotTodoDraft = draft }
+                    await { containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "取消"))
+                    main { model().screenshotTodoDraft = null }
+                    await { !containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    keyStore.clear()
+                    main { model().screenshotTodoDraft = draft }
+                    await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
+                    Thread.sleep(500)
+                    check(!containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？"))
+                    pass("automatic offer survives rotation, repeats only for a new screenshot and skips missing keys")
+                } finally {
+                    keyStore.clear()
+                    main { model().screenshotTodoDraft = null; latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED }
+                }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS automatic AI offer lifecycle\n") })
+                return
+            }
+            if (entryOnly) {
+                check(targetContext.packageName == "com.schedule.app.privateqa") { "Entry tests require the isolated package" }
+                val keyStore = TodoAiKeyStore(targetContext)
+                check(!keyStore.configured()) { "Refusing to overwrite an existing key" }
+                try {
+                    main { model().home() }
+                    await { containsText(uiAutomation.rootInActiveWindow, "快速新建") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "快速新建"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "新建待办") }
+                    await { clickLabel(uiAutomation.rootInActiveWindow, "新建待办") }
+                    await { containsText(uiAutomation.rootInActiveWindow, "手动输入") && containsText(uiAutomation.rootInActiveWindow, "截图转待办") }
+                    await { clickLabel(uiAutomation.rootInActiveWindow, "截图转待办") }
+                    await { containsText(uiAutomation.rootInActiveWindow, "截图识别与隐私") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "取消"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "设置 API Key") }
+                    capture("todo-screenshot-entry")
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "设置 API Key"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "DeepSeek API 密钥") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "截图识别隐私说明"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "截图识别与隐私") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "知道了"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "设置 API Key") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "设置 API Key"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "DeepSeek API 密钥") }
+                    check(setFirstEditableText(uiAutomation.rootInActiveWindow, "synthetic-test-key"))
+                    await { isEnabled(uiAutomation.rootInActiveWindow, "保存") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "保存"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "管理 API Key") }
+                    check(keyStore.configured())
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "管理 API Key"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "删除已保存的密钥") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "删除已保存的密钥"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "设置 API Key") }
+                    check(!keyStore.configured())
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "新增"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "手动新建待办") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "手动新建待办"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "新增作业 / 待办") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "取消"))
+                    await { !containsText(uiAutomation.rootInActiveWindow, "新增作业 / 待办") }
+                    await { clickLabel(uiAutomation.rootInActiveWindow, "新增") }
+                    await { containsText(uiAutomation.rootInActiveWindow, "手动新建待办") }
+                    await { clickLabel(uiAutomation.rootInActiveWindow, "截图转待办") }
+                    await { containsText(uiAutomation.rootInActiveWindow, "截图识别与隐私") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "取消"))
+                    pass("home and add menu open screenshot flow; key and manual entry remain usable")
+                } finally { keyStore.clear() }
+                finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS screenshot entry and key settings\n") })
+                return
+            }
             if (saveFailureOnly) {
                 saved()
                 val store = Store(targetContext)
@@ -122,7 +398,15 @@ class RegressionInstrumentation : Instrumentation() {
                     check(clickLabel(uiAutomation.rootInActiveWindow, "确认添加"))
                     saved()
                     check(store.load().todos.any { it.title == "合成截图测试事项" && it.dueDate == "2026-11-20" && it.dueTime == "15:00" })
-                    pass("image selection result flows through OCR, review and existing task storage")
+                    await { containsText(uiAutomation.rootInActiveWindow, "合成截图测试事项") }
+                    capture("todo-list-with-synthetic-item")
+                    await { containsText(uiAutomation.rootInActiveWindow, "截图转待办") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "截图转待办"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "Photos") }
+                    check(!containsText(uiAutomation.rootInActiveWindow, "截图识别与隐私"))
+                    uiAutomation.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK)
+                    await { containsText(uiAutomation.rootInActiveWindow, "截图转待办") }
+                    pass("image selection, confirmation, saving and subsequent direct picker work")
                 } finally {
                     resolver.delete(uri, null, null)
                     main { model().screenshotTodoDraft = null; if (wroteTodo) model().importJson(original) }
@@ -166,7 +450,10 @@ class RegressionInstrumentation : Instrumentation() {
                     release.countDown()
                     await { model().screenshotTodoDraft?.title == "旋转后整理完成" }
                     check(calls.get() == 1)
-                    await { containsText(uiAutomation.rootInActiveWindow, "旋转后整理完成") }
+                    await {
+                        val root = uiAutomation.rootInActiveWindow
+                        if (containsText(root, "旋转后整理完成")) true else { scrollBackward(root); false }
+                    }
                     pass("single AI request survives rotation and returns to the draft")
                     val canceledStarted = java.util.concurrent.CountDownLatch(1)
                     val canceledRelease = java.util.concurrent.CountDownLatch(1)
@@ -242,27 +529,35 @@ class RegressionInstrumentation : Instrumentation() {
                     val sentText = AtomicReference<String?>()
                     val resultDraft = AtomicReference<ScreenshotTodoDraft?>()
                     main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, { resultDraft.set(it) }, organize = { text, _, original -> sentText.set(text); original.copy(title = "整理后的示例") }, onSave = { savedTodo.set(it) }) } } }
-                    await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
-                    repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "AI 整理文字")) scrollForward(uiAutomation.rootInActiveWindow) }
-                    check(clickLabel(uiAutomation.rootInActiveWindow, "AI 整理文字")) { "AI button not accessible" }
                     await { containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
+                    check(sentText.get() == null) { "AI request started without consent" }
                     check(containsText(uiAutomation.rootInActiveWindow, draft.recognizedText))
                     check(containsText(uiAutomation.rootInActiveWindow, "图片不会发送"))
                     check(clickLabel(uiAutomation.rootInActiveWindow, "取消"))
                     await { !containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
                     check(savedTodo.get() == null && sentText.get() == null)
                     check(containsText(uiAutomation.rootInActiveWindow, "检查识别结果"))
-                    pass("AI consent shows text and cancel returns to the unsaved draft")
+                    pass("AI consent opens automatically; cancel returns to the local draft")
+                    repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "AI 整理文字")) scrollForward(uiAutomation.rootInActiveWindow) }
                     check(clickLabel(uiAutomation.rootInActiveWindow, "AI 整理文字"))
                     await { containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
                     check(clickLabel(uiAutomation.rootInActiveWindow, "同意并发送文字"))
                     await { resultDraft.get() != null }
                     check(sentText.get() == draft.recognizedText && resultDraft.get()?.title == "整理后的示例" && savedTodo.get() == null)
                     pass("AI starts only after consent and returns an unsaved draft")
+                    val batchState = androidx.compose.runtime.mutableStateOf(draft)
+                    main { latest.get().setContent { MaterialTheme {
+                        ScreenshotTodoReviewDialog(batchState.value, {}, { batchState.value = it },
+                            organize = { _, _, original -> TodoAi.parseResponse("""{"items":[{"title":"提交报告","dueDate":"2026-11-20","dueTime":"15:00"},{"title":"填写表格","dueDate":"2026-11-22","dueTime":"18:30"}]}""", original) },
+                            onSaveMany = {}, onSave = {})
+                    } } }
+                    await { containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
+                    check(clickLabel(uiAutomation.rootInActiveWindow, "同意并发送文字"))
+                    await { containsText(uiAutomation.rootInActiveWindow, "核对待办") }
+                    check(batchState.value.additionalItems.size == 1 && batchState.value.additionalItems[0].dueTime == "18:30")
+                    check(!isEnabled(uiAutomation.rootInActiveWindow, "添加 2 项"))
+                    pass("AI returns multiple independent tasks to batch review without saving")
                     main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, {}, organize = { _, _, _ -> throw IllegalStateException("synthetic failure") }, onSave = { savedTodo.set(it) }) } } }
-                    await { containsText(uiAutomation.rootInActiveWindow, "检查识别结果") }
-                    repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "AI 整理文字")) scrollForward(uiAutomation.rootInActiveWindow) }
-                    check(clickLabel(uiAutomation.rootInActiveWindow, "AI 整理文字"))
                     await { containsText(uiAutomation.rootInActiveWindow, "发送识别文字给 DeepSeek？") }
                     check(clickLabel(uiAutomation.rootInActiveWindow, "同意并发送文字"))
                     await {
@@ -278,8 +573,9 @@ class RegressionInstrumentation : Instrumentation() {
             if (reviewOnly) {
                 val savedTodo = AtomicReference<Todo?>()
                 val draft = ScreenshotTodoParser.parse("2026年11月20日 15:00 提交示例材料")
-                main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(draft, {}, {}, onSave = { savedTodo.set(it) }) } } }
+                main { latest.get().setContent { com.schedule.app.ui.ScheduleTheme(0, false) { ScreenshotTodoReviewDialog(draft, {}, {}, onSave = { savedTodo.set(it) }) } } }
                 await { containsText(uiAutomation.rootInActiveWindow, "确认添加") }
+                capture("screenshot-todo-review")
                 check(!isEnabled(uiAutomation.rootInActiveWindow, "确认添加")) { "Draft saved without confirmation" }
                 check(clickLabel(uiAutomation.rootInActiveWindow, "确认 2026-11-20 是截止日期"))
                 waitForIdleSync()
@@ -299,6 +595,8 @@ class RegressionInstrumentation : Instrumentation() {
                 pass("multiple date expressions display a warning and require review")
                 val invalidTime = multiple.copy(dueTime = "invalid")
                 main { latest.get().setContent { MaterialTheme { ScreenshotTodoReviewDialog(invalidTime, {}, {}, onSave = { savedTodo.set(it) }) } } }
+                waitForIdleSync()
+                Thread.sleep(300)
                 await { containsText(uiAutomation.rootInActiveWindow, "这条待办没有截止日期") }
                 check(clickLabel(uiAutomation.rootInActiveWindow, "这条待办没有截止日期"))
                 await { isEnabled(uiAutomation.rootInActiveWindow, "确认添加") }
@@ -318,6 +616,24 @@ class RegressionInstrumentation : Instrumentation() {
                 await { savedTodo.get() != null }
                 check(savedTodo.get()?.dueDate == "2026-11-20" && savedTodo.get()?.dueTime == null)
                 pass("user can explicitly save an ambiguous time as unset")
+                val candidates = ScreenshotTodoParser.parse("消息 09:31\n2026年11月20日下午 17:20 提交示例材料")
+                savedTodo.set(null)
+                main { latest.get().setContent { com.schedule.app.ui.ScheduleTheme(0, false) { ScreenshotTodoReviewDialog(candidates, {}, {}, onSave = { savedTodo.set(it) }) } } }
+                waitForIdleSync(); Thread.sleep(300)
+                await { containsText(uiAutomation.rootInActiveWindow, "确认 2026-11-20 是截止日期") }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认 2026-11-20 是截止日期"))
+                repeat(8) { if (!containsText(uiAutomation.rootInActiveWindow, "17:20")) scrollForward(uiAutomation.rootInActiveWindow) }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "17:20")) { "Time suggestion not accessible" }
+                await { containsText(uiAutomation.rootInActiveWindow, "确认 17:20 是截止时间") }
+                check(!isEnabled(uiAutomation.rootInActiveWindow, "确认添加")) { "Time suggestion must be confirmed" }
+                capture("screenshot-todo-time-choices")
+                waitForIdleSync(); Thread.sleep(300)
+                await { clickLabel(uiAutomation.rootInActiveWindow, "确认 17:20 是截止时间") }
+                await { isEnabled(uiAutomation.rootInActiveWindow, "确认添加") }
+                check(clickLabel(uiAutomation.rootInActiveWindow, "确认添加"))
+                await { savedTodo.get() != null }
+                check(savedTodo.get()?.dueTime == "17:20")
+                pass("time suggestions stay unselected and require confirmation")
                 finish(Activity.RESULT_OK, Bundle().apply { putString("stream", "\nPASS review requires date and time confirmation\n") })
                 return
             }
@@ -838,6 +1154,14 @@ class RegressionInstrumentation : Instrumentation() {
         }
         return (0 until node.childCount).any { setFirstEditableText(node.getChild(it), text) }
     }
+    private fun setEditableTextMatching(node: android.view.accessibility.AccessibilityNodeInfo?, old: String, value: String): Boolean {
+        if (node == null) return false
+        if (node.isEditable && node.text?.toString()?.contains(old) == true) {
+            val args = Bundle().apply { putCharSequence(android.view.accessibility.AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, value) }
+            return node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+        }
+        return (0 until node.childCount).any { setEditableTextMatching(node.getChild(it), old, value) }
+    }
     private fun clickFirstPhoto(node: android.view.accessibility.AccessibilityNodeInfo?): Boolean {
         if (node == null) return false
         if (node.contentDescription?.toString()?.startsWith("Photo taken on ") == true && node.isClickable) {
@@ -860,6 +1184,11 @@ class RegressionInstrumentation : Instrumentation() {
         if (node == null) return false
         if (node.isScrollable && node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_FORWARD)) return true
         return (0 until node.childCount).any { scrollForward(node.getChild(it)) }
+    }
+    private fun scrollBackward(node: android.view.accessibility.AccessibilityNodeInfo?): Boolean {
+        if (node == null) return false
+        if (node.isScrollable && node.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD)) return true
+        return (0 until node.childCount).any { scrollBackward(node.getChild(it)) }
     }
     private fun swipeUpSmall() {
         val metrics = targetContext.resources.displayMetrics
