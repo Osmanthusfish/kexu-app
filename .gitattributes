@@ -1,0 +1,2 @@
+# Preserve upstream license notices byte-for-byte, including original whitespace.
+third_party_licenses/RUNTIME-THIRD-PARTY-NOTICES.txt -text -whitespace
