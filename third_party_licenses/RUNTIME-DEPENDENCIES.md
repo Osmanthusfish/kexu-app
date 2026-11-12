@@ -1,101 +1,101 @@
 # 发布版本运行时组件清单
 
-本清单由 Gradle 离线解析 `releaseRuntimeClasspath` 的实际制品生成；它不等同于完整许可证审计，清单包含传递依赖。随各组件提供的第三方声明见 [RUNTIME-THIRD-PARTY-NOTICES.txt](RUNTIME-THIRD-PARTY-NOTICES.txt)。
+本清单由 Gradle 离线解析 `releaseRuntimeClasspath` 的实际制品生成，共 95 个制品（93 个不同组件版本）。许可名称摘自对应组件的官方 POM；仅有 `listenablefuture` 的许可从其官方上级 POM 继承。POM 的许可字段不保证覆盖组件内所有文件，随制品附带的第三方声明另见 [RUNTIME-THIRD-PARTY-NOTICES.txt](RUNTIME-THIRD-PARTY-NOTICES.txt)。
 
-| 组件 | 制品类型 | 自带第三方声明条目数 |
-| --- | --- | ---: |
-| `androidx.activity:activity-compose:1.9.3` | aar | 未提供索引 |
-| `androidx.activity:activity-ktx:1.9.3` | aar | 未提供索引 |
-| `androidx.activity:activity:1.9.3` | aar | 未提供索引 |
-| `androidx.annotation:annotation-experimental:1.4.1` | aar | 未提供索引 |
-| `androidx.annotation:annotation-jvm:1.8.1` | jar | 未提供索引 |
-| `androidx.appcompat:appcompat-resources:1.6.1` | aar | 未提供索引 |
-| `androidx.appcompat:appcompat:1.6.1` | aar | 未提供索引 |
-| `androidx.arch.core:core-common:2.2.0` | jar | 未提供索引 |
-| `androidx.arch.core:core-runtime:2.2.0` | aar | 未提供索引 |
-| `androidx.autofill:autofill:1.0.0` | aar | 未提供索引 |
-| `androidx.collection:collection-jvm:1.4.4` | jar | 未提供索引 |
-| `androidx.collection:collection-ktx:1.4.4` | jar | 未提供索引 |
-| `androidx.compose.animation:animation-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.animation:animation-core-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.foundation:foundation-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.foundation:foundation-layout-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.material3:material3-android:1.3.1` | aar | 未提供索引 |
-| `androidx.compose.material:material-icons-core-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.material:material-icons-extended-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.material:material-ripple-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.runtime:runtime-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.runtime:runtime-saveable-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.ui:ui-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.ui:ui-geometry-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.ui:ui-graphics-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.ui:ui-text-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.ui:ui-tooling-preview-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.ui:ui-unit-android:1.7.5` | aar | 未提供索引 |
-| `androidx.compose.ui:ui-util-android:1.7.5` | aar | 未提供索引 |
-| `androidx.concurrent:concurrent-futures:1.1.0` | jar | 未提供索引 |
-| `androidx.core:core-ktx:1.13.1` | aar | 未提供索引 |
-| `androidx.core:core:1.13.1` | aar | 未提供索引 |
-| `androidx.core:core:1.13.1` | aar | 未提供索引 |
-| `androidx.cursoradapter:cursoradapter:1.0.0` | aar | 未提供索引 |
-| `androidx.customview:customview-poolingcontainer:1.0.0` | aar | 未提供索引 |
-| `androidx.customview:customview:1.0.0` | aar | 未提供索引 |
-| `androidx.drawerlayout:drawerlayout:1.0.0` | aar | 未提供索引 |
-| `androidx.emoji2:emoji2-views-helper:1.3.0` | aar | 未提供索引 |
-| `androidx.emoji2:emoji2:1.3.0` | aar | 未提供索引 |
-| `androidx.exifinterface:exifinterface:1.0.0` | aar | 未提供索引 |
-| `androidx.fragment:fragment:1.3.6` | aar | 未提供索引 |
-| `androidx.fragment:fragment:1.3.6` | aar | 未提供索引 |
-| `androidx.graphics:graphics-path:1.0.1` | aar | 未提供索引 |
-| `androidx.interpolator:interpolator:1.0.0` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-common-java8:2.8.7` | jar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-common-jvm:2.8.7` | jar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-livedata-core-ktx:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-livedata-core:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-livedata:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-process:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-runtime-android:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-runtime-compose-android:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-runtime-ktx-android:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-viewmodel-android:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-viewmodel-compose-android:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.7` | aar | 未提供索引 |
-| `androidx.lifecycle:lifecycle-viewmodel:2.8.7` | aar | 未提供索引 |
-| `androidx.loader:loader:1.0.0` | aar | 未提供索引 |
-| `androidx.profileinstaller:profileinstaller:1.3.1` | aar | 未提供索引 |
-| `androidx.resourceinspection:resourceinspection-annotation:1.0.1` | jar | 未提供索引 |
-| `androidx.savedstate:savedstate-ktx:1.2.1` | aar | 未提供索引 |
-| `androidx.savedstate:savedstate:1.2.1` | aar | 未提供索引 |
-| `androidx.startup:startup-runtime:1.1.1` | aar | 未提供索引 |
-| `androidx.tracing:tracing:1.0.0` | aar | 未提供索引 |
-| `androidx.vectordrawable:vectordrawable-animated:1.1.0` | aar | 未提供索引 |
-| `androidx.vectordrawable:vectordrawable:1.1.0` | aar | 未提供索引 |
-| `androidx.versionedparcelable:versionedparcelable:1.1.1` | aar | 未提供索引 |
-| `androidx.viewpager:viewpager:1.0.0` | aar | 未提供索引 |
-| `com.google.android.datatransport:transport-api:2.2.1` | aar | 0 |
-| `com.google.android.datatransport:transport-backend-cct:2.3.3` | aar | 0 |
-| `com.google.android.datatransport:transport-runtime:2.2.6` | aar | 1 |
-| `com.google.android.gms:play-services-base:18.5.0` | aar | 16 |
-| `com.google.android.gms:play-services-basement:18.4.0` | aar | 16 |
-| `com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.1` | aar | 59 |
-| `com.google.android.gms:play-services-mlkit-text-recognition-common:19.1.0` | aar | 59 |
-| `com.google.android.gms:play-services-tasks:18.2.0` | aar | 16 |
-| `com.google.android.odml:image:1.0.0-beta1` | aar | 45 |
-| `com.google.firebase:firebase-annotations:16.0.0` | jar | 未提供索引 |
-| `com.google.firebase:firebase-components:16.1.0` | aar | 0 |
-| `com.google.firebase:firebase-encoders-json:17.1.0` | aar | 0 |
-| `com.google.firebase:firebase-encoders:16.1.0` | jar | 未提供索引 |
-| `com.google.guava:listenablefuture:1.0` | jar | 未提供索引 |
-| `com.google.mlkit:common:18.11.0` | aar | 57 |
-| `com.google.mlkit:text-recognition-bundled-common:17.0.0` | aar | 198 |
-| `com.google.mlkit:text-recognition-chinese:16.0.1` | aar | 198 |
-| `com.google.mlkit:vision-common:17.3.0` | aar | 56 |
-| `com.google.mlkit:vision-interfaces:16.3.0` | aar | 52 |
-| `javax.inject:javax.inject:1` | jar | 未提供索引 |
-| `org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.20` | jar | 未提供索引 |
-| `org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.20` | jar | 未提供索引 |
-| `org.jetbrains.kotlin:kotlin-stdlib:2.0.21` | jar | 未提供索引 |
-| `org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3` | jar | 未提供索引 |
-| `org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.7.3` | jar | 未提供索引 |
-| `org.jetbrains:annotations:23.0.0` | jar | 未提供索引 |
+| 组件 | 制品类型 | 官方元数据所列许可 | 依据 |
+| --- | --- | --- | --- |
+| `androidx.activity:activity-compose:1.9.3` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/1.9.3/activity-compose-1.9.3.pom) |
+| `androidx.activity:activity-ktx:1.9.3` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/activity/activity-ktx/1.9.3/activity-ktx-1.9.3.pom) |
+| `androidx.activity:activity:1.9.3` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/activity/activity/1.9.3/activity-1.9.3.pom) |
+| `androidx.annotation:annotation-experimental:1.4.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/annotation/annotation-experimental/1.4.1/annotation-experimental-1.4.1.pom) |
+| `androidx.annotation:annotation-jvm:1.8.1` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/annotation/annotation-jvm/1.8.1/annotation-jvm-1.8.1.pom) |
+| `androidx.appcompat:appcompat-resources:1.6.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/appcompat/appcompat-resources/1.6.1/appcompat-resources-1.6.1.pom) |
+| `androidx.appcompat:appcompat:1.6.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/appcompat/appcompat/1.6.1/appcompat-1.6.1.pom) |
+| `androidx.arch.core:core-common:2.2.0` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/arch/core/core-common/2.2.0/core-common-2.2.0.pom) |
+| `androidx.arch.core:core-runtime:2.2.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/arch/core/core-runtime/2.2.0/core-runtime-2.2.0.pom) |
+| `androidx.autofill:autofill:1.0.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/autofill/autofill/1.0.0/autofill-1.0.0.pom) |
+| `androidx.collection:collection-jvm:1.4.4` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/collection/collection-jvm/1.4.4/collection-jvm-1.4.4.pom) |
+| `androidx.collection:collection-ktx:1.4.4` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/collection/collection-ktx/1.4.4/collection-ktx-1.4.4.pom) |
+| `androidx.compose.animation:animation-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/animation/animation-android/1.7.5/animation-android-1.7.5.pom) |
+| `androidx.compose.animation:animation-core-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/animation/animation-core-android/1.7.5/animation-core-android-1.7.5.pom) |
+| `androidx.compose.foundation:foundation-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/foundation/foundation-android/1.7.5/foundation-android-1.7.5.pom) |
+| `androidx.compose.foundation:foundation-layout-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/foundation/foundation-layout-android/1.7.5/foundation-layout-android-1.7.5.pom) |
+| `androidx.compose.material3:material3-android:1.3.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/material3/material3-android/1.3.1/material3-android-1.3.1.pom) |
+| `androidx.compose.material:material-icons-core-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-core-android/1.7.5/material-icons-core-android-1.7.5.pom) |
+| `androidx.compose.material:material-icons-extended-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/material/material-icons-extended-android/1.7.5/material-icons-extended-android-1.7.5.pom) |
+| `androidx.compose.material:material-ripple-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/material/material-ripple-android/1.7.5/material-ripple-android-1.7.5.pom) |
+| `androidx.compose.runtime:runtime-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-android/1.7.5/runtime-android-1.7.5.pom) |
+| `androidx.compose.runtime:runtime-saveable-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/runtime/runtime-saveable-android/1.7.5/runtime-saveable-android-1.7.5.pom) |
+| `androidx.compose.ui:ui-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-android/1.7.5/ui-android-1.7.5.pom) |
+| `androidx.compose.ui:ui-geometry-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-geometry-android/1.7.5/ui-geometry-android-1.7.5.pom) |
+| `androidx.compose.ui:ui-graphics-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-graphics-android/1.7.5/ui-graphics-android-1.7.5.pom) |
+| `androidx.compose.ui:ui-text-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-text-android/1.7.5/ui-text-android-1.7.5.pom) |
+| `androidx.compose.ui:ui-tooling-preview-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-tooling-preview-android/1.7.5/ui-tooling-preview-android-1.7.5.pom) |
+| `androidx.compose.ui:ui-unit-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-unit-android/1.7.5/ui-unit-android-1.7.5.pom) |
+| `androidx.compose.ui:ui-util-android:1.7.5` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/compose/ui/ui-util-android/1.7.5/ui-util-android-1.7.5.pom) |
+| `androidx.concurrent:concurrent-futures:1.1.0` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/concurrent/concurrent-futures/1.1.0/concurrent-futures-1.1.0.pom) |
+| `androidx.core:core-ktx:1.13.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/core/core-ktx/1.13.1/core-ktx-1.13.1.pom) |
+| `androidx.core:core:1.13.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/core/core/1.13.1/core-1.13.1.pom) |
+| `androidx.core:core:1.13.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/core/core/1.13.1/core-1.13.1.pom) |
+| `androidx.cursoradapter:cursoradapter:1.0.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/cursoradapter/cursoradapter/1.0.0/cursoradapter-1.0.0.pom) |
+| `androidx.customview:customview-poolingcontainer:1.0.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/customview/customview-poolingcontainer/1.0.0/customview-poolingcontainer-1.0.0.pom) |
+| `androidx.customview:customview:1.0.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/customview/customview/1.0.0/customview-1.0.0.pom) |
+| `androidx.drawerlayout:drawerlayout:1.0.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/drawerlayout/drawerlayout/1.0.0/drawerlayout-1.0.0.pom) |
+| `androidx.emoji2:emoji2-views-helper:1.3.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/emoji2/emoji2-views-helper/1.3.0/emoji2-views-helper-1.3.0.pom) |
+| `androidx.emoji2:emoji2:1.3.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/emoji2/emoji2/1.3.0/emoji2-1.3.0.pom) |
+| `androidx.exifinterface:exifinterface:1.0.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/exifinterface/exifinterface/1.0.0/exifinterface-1.0.0.pom) |
+| `androidx.fragment:fragment:1.3.6` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/fragment/fragment/1.3.6/fragment-1.3.6.pom) |
+| `androidx.fragment:fragment:1.3.6` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/fragment/fragment/1.3.6/fragment-1.3.6.pom) |
+| `androidx.graphics:graphics-path:1.0.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/graphics/graphics-path/1.0.1/graphics-path-1.0.1.pom) |
+| `androidx.interpolator:interpolator:1.0.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/interpolator/interpolator/1.0.0/interpolator-1.0.0.pom) |
+| `androidx.lifecycle:lifecycle-common-java8:2.8.7` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-common-java8/2.8.7/lifecycle-common-java8-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-common-jvm:2.8.7` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-common-jvm/2.8.7/lifecycle-common-jvm-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-livedata-core-ktx:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-core-ktx/2.8.7/lifecycle-livedata-core-ktx-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-livedata-core:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata-core/2.8.7/lifecycle-livedata-core-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-livedata:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-livedata/2.8.7/lifecycle-livedata-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-process:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-process/2.8.7/lifecycle-process-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-runtime-android:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-runtime-android/2.8.7/lifecycle-runtime-android-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-runtime-compose-android:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-runtime-compose-android/2.8.7/lifecycle-runtime-compose-android-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-runtime-ktx-android:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-runtime-ktx-android/2.8.7/lifecycle-runtime-ktx-android-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-viewmodel-android:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-android/2.8.7/lifecycle-viewmodel-android-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-viewmodel-compose-android:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-compose-android/2.8.7/lifecycle-viewmodel-compose-android-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-ktx/2.8.7/lifecycle-viewmodel-ktx-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-viewmodel-savedstate:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-savedstate/2.8.7/lifecycle-viewmodel-savedstate-2.8.7.pom) |
+| `androidx.lifecycle:lifecycle-viewmodel:2.8.7` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel/2.8.7/lifecycle-viewmodel-2.8.7.pom) |
+| `androidx.loader:loader:1.0.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/loader/loader/1.0.0/loader-1.0.0.pom) |
+| `androidx.profileinstaller:profileinstaller:1.3.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/profileinstaller/profileinstaller/1.3.1/profileinstaller-1.3.1.pom) |
+| `androidx.resourceinspection:resourceinspection-annotation:1.0.1` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/resourceinspection/resourceinspection-annotation/1.0.1/resourceinspection-annotation-1.0.1.pom) |
+| `androidx.savedstate:savedstate-ktx:1.2.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/savedstate/savedstate-ktx/1.2.1/savedstate-ktx-1.2.1.pom) |
+| `androidx.savedstate:savedstate:1.2.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/savedstate/savedstate/1.2.1/savedstate-1.2.1.pom) |
+| `androidx.startup:startup-runtime:1.1.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/startup/startup-runtime/1.1.1/startup-runtime-1.1.1.pom) |
+| `androidx.tracing:tracing:1.0.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/tracing/tracing/1.0.0/tracing-1.0.0.pom) |
+| `androidx.vectordrawable:vectordrawable-animated:1.1.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/vectordrawable/vectordrawable-animated/1.1.0/vectordrawable-animated-1.1.0.pom) |
+| `androidx.vectordrawable:vectordrawable:1.1.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/vectordrawable/vectordrawable/1.1.0/vectordrawable-1.1.0.pom) |
+| `androidx.versionedparcelable:versionedparcelable:1.1.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/versionedparcelable/versionedparcelable/1.1.1/versionedparcelable-1.1.1.pom) |
+| `androidx.viewpager:viewpager:1.0.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/androidx/viewpager/viewpager/1.0.0/viewpager-1.0.0.pom) |
+| `com.google.android.datatransport:transport-api:2.2.1` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/com/google/android/datatransport/transport-api/2.2.1/transport-api-2.2.1.pom) |
+| `com.google.android.datatransport:transport-backend-cct:2.3.3` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/com/google/android/datatransport/transport-backend-cct/2.3.3/transport-backend-cct-2.3.3.pom) |
+| `com.google.android.datatransport:transport-runtime:2.2.6` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/com/google/android/datatransport/transport-runtime/2.2.6/transport-runtime-2.2.6.pom) |
+| `com.google.android.gms:play-services-base:18.5.0` | aar | [Android Software Development Kit License](https://developer.android.com/studio/terms.html) | [POM](https://dl.google.com/dl/android/maven2/com/google/android/gms/play-services-base/18.5.0/play-services-base-18.5.0.pom) |
+| `com.google.android.gms:play-services-basement:18.4.0` | aar | [Android Software Development Kit License](https://developer.android.com/studio/terms.html) | [POM](https://dl.google.com/dl/android/maven2/com/google/android/gms/play-services-basement/18.4.0/play-services-basement-18.4.0.pom) |
+| `com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.1` | aar | [ML Kit Terms of Service](https://developers.google.com/ml-kit/terms) | [POM](https://dl.google.com/dl/android/maven2/com/google/android/gms/play-services-mlkit-text-recognition-chinese/16.0.1/play-services-mlkit-text-recognition-chinese-16.0.1.pom) |
+| `com.google.android.gms:play-services-mlkit-text-recognition-common:19.1.0` | aar | [ML Kit Terms of Service](https://developers.google.com/ml-kit/terms) | [POM](https://dl.google.com/dl/android/maven2/com/google/android/gms/play-services-mlkit-text-recognition-common/19.1.0/play-services-mlkit-text-recognition-common-19.1.0.pom) |
+| `com.google.android.gms:play-services-tasks:18.2.0` | aar | [Android Software Development Kit License](https://developer.android.com/studio/terms.html) | [POM](https://dl.google.com/dl/android/maven2/com/google/android/gms/play-services-tasks/18.2.0/play-services-tasks-18.2.0.pom) |
+| `com.google.android.odml:image:1.0.0-beta1` | aar | [Android Software Development Kit License](https://developer.android.com/studio/terms.html) | [POM](https://dl.google.com/dl/android/maven2/com/google/android/odml/image/1.0.0-beta1/image-1.0.0-beta1.pom) |
+| `com.google.firebase:firebase-annotations:16.0.0` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/com/google/firebase/firebase-annotations/16.0.0/firebase-annotations-16.0.0.pom) |
+| `com.google.firebase:firebase-components:16.1.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/com/google/firebase/firebase-components/16.1.0/firebase-components-16.1.0.pom) |
+| `com.google.firebase:firebase-encoders-json:17.1.0` | aar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/com/google/firebase/firebase-encoders-json/17.1.0/firebase-encoders-json-17.1.0.pom) |
+| `com.google.firebase:firebase-encoders:16.1.0` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://dl.google.com/dl/android/maven2/com/google/firebase/firebase-encoders/16.1.0/firebase-encoders-16.1.0.pom) |
+| `com.google.guava:listenablefuture:1.0` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt)（继承自上级 POM） | [POM](https://repo.maven.apache.org/maven2/com/google/guava/listenablefuture/1.0/listenablefuture-1.0.pom) |
+| `com.google.mlkit:common:18.11.0` | aar | [ML Kit Terms of Service](https://developers.google.com/ml-kit/terms) | [POM](https://dl.google.com/dl/android/maven2/com/google/mlkit/common/18.11.0/common-18.11.0.pom) |
+| `com.google.mlkit:text-recognition-bundled-common:17.0.0` | aar | [ML Kit Terms of Service](https://developers.google.com/ml-kit/terms) | [POM](https://dl.google.com/dl/android/maven2/com/google/mlkit/text-recognition-bundled-common/17.0.0/text-recognition-bundled-common-17.0.0.pom) |
+| `com.google.mlkit:text-recognition-chinese:16.0.1` | aar | [ML Kit Terms of Service](https://developers.google.com/ml-kit/terms) | [POM](https://dl.google.com/dl/android/maven2/com/google/mlkit/text-recognition-chinese/16.0.1/text-recognition-chinese-16.0.1.pom) |
+| `com.google.mlkit:vision-common:17.3.0` | aar | [ML Kit Terms of Service](https://developers.google.com/ml-kit/terms) | [POM](https://dl.google.com/dl/android/maven2/com/google/mlkit/vision-common/17.3.0/vision-common-17.3.0.pom) |
+| `com.google.mlkit:vision-interfaces:16.3.0` | aar | [ML Kit Terms of Service](https://developers.google.com/ml-kit/terms) | [POM](https://dl.google.com/dl/android/maven2/com/google/mlkit/vision-interfaces/16.3.0/vision-interfaces-16.3.0.pom) |
+| `javax.inject:javax.inject:1` | jar | [The Apache Software License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://repo.maven.apache.org/maven2/javax/inject/javax.inject/1/javax.inject-1.pom) |
+| `org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.20` | jar | [The Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.20/kotlin-stdlib-jdk7-1.8.20.pom) |
+| `org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.20` | jar | [The Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.20/kotlin-stdlib-jdk8-1.8.20.pom) |
+| `org.jetbrains.kotlin:kotlin-stdlib:2.0.21` | jar | [The Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://repo.maven.apache.org/maven2/org/jetbrains/kotlin/kotlin-stdlib/2.0.21/kotlin-stdlib-2.0.21.pom) |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3` | jar | [The Apache Software License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-android/1.7.3/kotlinx-coroutines-android-1.7.3.pom) |
+| `org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.7.3` | jar | [The Apache Software License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-core-jvm/1.7.3/kotlinx-coroutines-core-jvm-1.7.3.pom) |
+| `org.jetbrains:annotations:23.0.0` | jar | [The Apache Software License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt) | [POM](https://repo.maven.apache.org/maven2/org/jetbrains/annotations/23.0.0/annotations-23.0.0.pom) |
