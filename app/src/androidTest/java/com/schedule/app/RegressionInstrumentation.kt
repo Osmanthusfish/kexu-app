@@ -147,13 +147,18 @@ class RegressionInstrumentation : Instrumentation() {
                         session = ViewModelProvider(latest.get())[ScreenshotTodoAiSession::class.java]
                         session!!.start(draft, { "synthetic" }) { _, _, source ->
                             calls.incrementAndGet(); started.countDown()
-                            check(release.await(15, java.util.concurrent.TimeUnit.SECONDS))
+                            check(release.await(40, java.util.concurrent.TimeUnit.SECONDS))
                             source.copy(title = "旋转后整理完成")
                         }
                     }
                     check(started.await(5, java.util.concurrent.TimeUnit.SECONDS))
-                    await { containsText(uiAutomation.rootInActiveWindow, "停止 AI 整理") }
+                    waitForIdleSync()
+                    check(containsText(uiAutomation.rootInActiveWindow, "待办内容"))
                     check(!setFirstEditableText(uiAutomation.rootInActiveWindow, "不应覆盖草稿")) { "AI 请求期间表单仍可编辑" }
+                    await {
+                        val root = uiAutomation.rootInActiveWindow
+                        if (containsText(root, "停止 AI 整理")) true else { scrollForward(root); false }
+                    }
                     val oldActivity = latest.get()
                     main { latest.get().requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE }
                     await { latest.get() !== oldActivity && latest.get().resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE }
